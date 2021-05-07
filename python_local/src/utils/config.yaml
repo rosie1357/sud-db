@@ -1,0 +1,38 @@
+# config for sud db tables
+
+CONDITIONS:
+  - ALCHL
+  - CNNBS
+  - OPIOIDS
+  - PLYSBSTNCE
+  - STMLNTS
+  - TBCCO
+  - OTHER
+
+SETTINGS:
+  - Inpatient
+  - Outpatient
+  - Residential
+  - Home
+  - Community
+  - Unknown
+
+SERVICES:
+  - CASE_MGMT 
+  - COMM_SPRT 
+  - CNSLTN 
+  - CNSLING 
+  - DETOX 
+  - EMER_SRVCS 
+  - INPAT 
+  - INTRVN 
+  - MAT 
+  - MED_MGMT
+  - OBS_CARE 
+  - OTHER 
+  - PART_HOSP 
+  - PEER_SPRT 
+  - PHYS_SRVCS 
+  - RX 
+  - SCN_ASSMT 
+  - TREAT
