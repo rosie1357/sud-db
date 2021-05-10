@@ -18,7 +18,6 @@ STATE_LIST = [str(state) for state in states.STATES_AND_TERRITORIES] + ['Distric
 # mappings of name/abbrev to FIPS
 
 FIPS_NAME_MAP = states.mapping('fips','name')
-FIPS_NAME_MAP['00'] = 'United States'
 
 # base restricted and regular paths
 

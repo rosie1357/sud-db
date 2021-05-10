@@ -10,7 +10,7 @@ setup(
     license='Mathematica',
     entry_points={
         'console_scripts': [
-            'write_db_tables  = src.cli:main',
+            'write_db_tables  = write_db.cli:main',
         ],
     },
 )

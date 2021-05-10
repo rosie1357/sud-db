@@ -36,3 +36,22 @@ SERVICES:
   - RX 
   - SCN_ASSMT 
   - TREAT
+
+SERVICES_VOL:
+  - CNSLTN 
+  - CNSLING 
+  - EMER_SRVCS 
+  - INPAT 
+  - MAT 
+  - OBS_CARE 
+  - PART_HOSP 
+  - PHYS_SRVCS 
+  - SCN_ASSMT 
+  - TREAT
+
+SERVICES_DAYS:
+  - INPAT 
+  - MAT 
+  - OBS_CARE 
+  - PART_HOSP 
+  - TREAT
