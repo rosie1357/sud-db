@@ -28,4 +28,6 @@ SASDIR = DIR_RESTRICTED / 'ebi_output'
 
 OUTDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\final_tables')
 
-OUTDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\logs')
+LOGDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\logs')
+
+LOGNAME = lambda year, TIME_NOW: f"sud_db_tables_{year}_{TIME_NOW}.log"
