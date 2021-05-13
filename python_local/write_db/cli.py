@@ -9,6 +9,8 @@ import openpyxl as xl
 from pathlib import Path
 
 from .utils.params import LOGDIR, LOGNAME
+from .utils.general_funcs import read_config, get_current_path, generate_logger
+from .gen_tables import gen_tables
 
 def main(args=None):
     
@@ -24,13 +26,18 @@ def main(args=None):
     args = parser.parse_args()
     YEAR, VERSION = args.year,  args.version
 
-    # read in measures config file to get dictionary with all needed lists
+    # read in measures config file to get dictionary with details to run each table
 
-    MEASURES = read_config(config_dir = get_current_path(sub_dirs = 'write_db/utils'))
+    CONFIG = read_config(config_dir = get_current_path(sub_dirs = 'write_db/utils'))
+    table_details = CONFIG['TABLE_MAPPINGS']
 
     # set up log
     
-    log = generate_logger(logdir = LOGDIR, logname = LOGNAME, 
-                          init_message = f"Creation of SUD DB tables")
+    #log = generate_logger(logdir = LOGDIR, logname = LOGNAME, 
+    #                      init_message = f"Creation of SUD DB tables")
+
+    # call  gen_tables to do all processing
+
+    gen_tables(year = YEAR, version = VERSION, table_details = table_details)
 
     

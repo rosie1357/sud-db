@@ -1,57 +1,23 @@
 # config for sud db tables
 
-CONDITIONS:
-  - ALCHL
-  - CNNBS
-  - OPIOIDS
-  - PLYSBSTNCE
-  - STMLNTS
-  - TBCCO
-  - OTHER
+TABLE_MAPPINGS:
+  t1:
+    sas_ds: state_sud_methods
+    sheet: A.1.
+    numerators: 
+      - pop_sud_alchl_tot 
+      - pop_sud_cnnbs_tot 
+      - pop_sud_opioids_tot 
+      - pop_sud_plysbstnce_tot 
+      - pop_sud_stmlnts_tot 
+      - pop_sud_tbcco_tot 
+      - pop_sud_other_tot 
+    denominators:
+      - pop_tot_base
+    excel_order:
+      - denominator
+      - count
+      - pct
+    
+    
 
-SETTINGS:
-  - Inpatient
-  - Outpatient
-  - Residential
-  - Home
-  - Community
-  - Unknown
-
-SERVICES:
-  - CASE_MGMT 
-  - COMM_SPRT 
-  - CNSLTN 
-  - CNSLING 
-  - DETOX 
-  - EMER_SRVCS 
-  - INPAT 
-  - INTRVN 
-  - MAT 
-  - MED_MGMT
-  - OBS_CARE 
-  - OTHER 
-  - PART_HOSP 
-  - PEER_SPRT 
-  - PHYS_SRVCS 
-  - RX 
-  - SCN_ASSMT 
-  - TREAT
-
-SERVICES_VOL:
-  - CNSLTN 
-  - CNSLING 
-  - EMER_SRVCS 
-  - INPAT 
-  - MAT 
-  - OBS_CARE 
-  - PART_HOSP 
-  - PHYS_SRVCS 
-  - SCN_ASSMT 
-  - TREAT
-
-SERVICES_DAYS:
-  - INPAT 
-  - MAT 
-  - OBS_CARE 
-  - PART_HOSP 
-  - TREAT
