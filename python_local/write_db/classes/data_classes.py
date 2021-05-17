@@ -73,9 +73,8 @@ class TableClass(BaseDataClass):
 
         # create lists of count cols, all table cols
 
-        self.count_cols = self.numerators + self.denominators
-
-        if self.excel_order == ['denominator','count','pct']:
+        if self.excel_order == ['big_denom','count','pct']:
+            self.count_cols = self.numerators + self.denominators
             self.excel_cols = create_text_list(base_list = self.numerators, return_list_func=pct_list, init_list=self.denominators)
 
         # create dataframe to write to tables
@@ -84,7 +83,7 @@ class TableClass(BaseDataClass):
 
         # identify specific sheet name from list of workbook sheets
 
-        self.sheet_name = self.get_sheet_name()
+        #self.sheet_name = self.get_sheet_name()
         
     def __getattr__(self, attr):
         """

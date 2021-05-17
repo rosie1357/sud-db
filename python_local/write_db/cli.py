@@ -33,8 +33,8 @@ def main(args=None):
 
     # set up log
     
-    log = generate_logger(logdir = LOGDIR(YEAR), logname = LOGNAME(YEAR), 
-                          init_message = f"Creation of SUD DB tables")
+    #log = generate_logger(logdir = LOGDIR(YEAR), logname = LOGNAME(YEAR), 
+    #                      init_message = f"Creation of SUD DB tables")
 
     # open shell
 

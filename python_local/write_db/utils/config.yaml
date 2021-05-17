@@ -16,7 +16,7 @@ TABLE_MAPPINGS:
     denominators:
       - pop_tot_base
     excel_order:
-      - denominator
+      - big_denom
       - count
       - pct
 
@@ -34,12 +34,26 @@ TABLE_MAPPINGS:
     denominators:
       - pop_sud_tot
     excel_order:
-      - denominator
+      - big_denom
       - count
       - pct    
-    
+
   t3:
     sas_ds: state_elgblty_grp_sud
     sheet_num: A.3.
-    numerators: 
-      - pop_sud_alchl_tot 
+    wide: True
+    group_col: elgblty_grp_cat
+    sum_col: count
+    numer_col: pop_sud
+    group_order: 
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    excel_order:
+      - big_denom
+      - indiv_denoms
+      - count
+      - pct
