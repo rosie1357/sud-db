@@ -24,12 +24,21 @@ FIPS_NAME_MAP = states.mapping('fips','name')
 DIR_RESTRICTED = lambda year: Path(fr"N:\Project\51131_MACBIS\Restricted\MA1\T3_Analytics\01_MandatedReports\01_SUDDatabook\{int(year)-2018:02}_{year}")
 DIR_MAIN = lambda year: Path(str(DIR_RESTRICTED(year)).replace('\\Restricted',''))
 
+# subdirs
+
+SPECDIR = lambda year: DIR_MAIN(year) / Path(r'Specs and table shells\Table shells')
+
 SASDIR = lambda year: DIR_RESTRICTED(year) / 'ebi_output'
 
 OUTDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\final_tables')
 
 LOGDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\logs')
 
-LOGNAME = lambda year, TIME_NOW: f"sud_db_tables_{year}_{TIME_NOW}.log"
+# file names
+
+SHELL = 'SUD DB Tables.xlsx'
+OUTFILE = lambda year: f"SUD DB Tables ({year}) - {DATE_NOW}.xlsx"
+
+LOGNAME = lambda year: f"sud_db_tables_{year}_{TIME_NOW}.log"
 
 TOTALS_DS = 'state_sud_methods'

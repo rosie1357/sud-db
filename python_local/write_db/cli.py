@@ -8,7 +8,7 @@ import logging
 import openpyxl as xl
 from pathlib import Path
 
-from .utils.params import LOGDIR, LOGNAME
+from .utils.params import LOGDIR, LOGNAME, SPECDIR, SHELL, OUTDIR, OUTFILE
 from .utils.general_funcs import read_config, get_current_path, generate_logger
 from .gen_tables import gen_tables
 
@@ -33,11 +33,21 @@ def main(args=None):
 
     # set up log
     
-    #log = generate_logger(logdir = LOGDIR, logname = LOGNAME, 
-    #                      init_message = f"Creation of SUD DB tables")
+    log = generate_logger(logdir = LOGDIR(YEAR), logname = LOGNAME(YEAR), 
+                          init_message = f"Creation of SUD DB tables")
 
-    # call  gen_tables to do all processing
+    # open shell
 
-    gen_tables(year = YEAR, version = VERSION, table_details = table_details)
+    workbook = xl.load_workbook(SPECDIR(YEAR) / SHELL)
+
+    # call gen_tables to do all processing
+
+    gen_tables(year = YEAR, version = VERSION, workbook = workbook, table_details = table_details)
+
+    # save table
+
+    workbook.save(OUTDIR(YEAR) / OUTFILE(YEAR))
+
+
 
     

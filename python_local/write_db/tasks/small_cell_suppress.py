@@ -1,5 +1,3 @@
-
-
 def small_cell_suppress(*, df, suppress_cols, suppress_value='DS', min_max=(0,11)):
     """
     Function small_cell_suppress to set all values of given columns within given range to given suppressed value.
@@ -16,5 +14,5 @@ def small_cell_suppress(*, df, suppress_cols, suppress_value='DS', min_max=(0,11
     """
 
     df[suppress_cols] = df[suppress_cols].applymap(lambda x: suppress_value if (x > min_max[0]) & (x < min_max[1]) else x)
-    
+
     return df

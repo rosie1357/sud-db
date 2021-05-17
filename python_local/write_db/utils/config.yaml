@@ -3,8 +3,9 @@
 TABLE_MAPPINGS:
   t1:
     sas_ds: state_sud_methods
-    sheet: A.1.
+    sheet_num: A.1.
     numerators: 
+      - pop_sud_tot
       - pop_sud_alchl_tot 
       - pop_sud_cnnbs_tot 
       - pop_sud_opioids_tot 
@@ -18,6 +19,27 @@ TABLE_MAPPINGS:
       - denominator
       - count
       - pct
-    
-    
 
+  t2:
+    sas_ds: state_sud_methods
+    sheet_num: A.2.
+    numerators: 
+      - pop_sud_alchl_tot 
+      - pop_sud_cnnbs_tot 
+      - pop_sud_opioids_tot 
+      - pop_sud_plysbstnce_tot 
+      - pop_sud_stmlnts_tot 
+      - pop_sud_tbcco_tot 
+      - pop_sud_other_tot 
+    denominators:
+      - pop_sud_tot
+    excel_order:
+      - denominator
+      - count
+      - pct    
+    
+  t3:
+    sas_ds: state_elgblty_grp_sud
+    sheet_num: A.3.
+    numerators: 
+      - pop_sud_alchl_tot 
