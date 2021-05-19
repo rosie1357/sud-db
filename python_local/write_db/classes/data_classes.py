@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ..tasks.national_values import get_national_values
-from ..tasks.data_transform import read_sas, convert_fips, create_pcts
+from ..tasks.data_transform import read_sas, convert_fips, create_pcts, wide_transform, zero_fill_cond
 from ..tasks.small_cell_suppress import small_cell_suppress
 from ..tasks.write_excel import read_template_col, write_sheet
 from ..utils.text_funcs import pct_list, create_text_list
@@ -34,7 +34,7 @@ class BaseDataClass:
         # assign defaults that can be overwritten with table-specific params with creation of each TableClass
 
         self.scol = 2
-        self.wide = False
+        self.gen_wide = False
 
     def prep_totals(self, tot_cols):
         """
@@ -67,15 +67,31 @@ class TableClass(BaseDataClass):
 
         """
         self.baseclass_inst = baseclass_inst
+        self.details_dict = details_dict
 
         for key in details_dict:
             setattr(self, key, details_dict[key])
 
         # create lists of count cols, all table cols
 
+        # if group_order is given, must dynamically create list of numerators and denominators
+        # numerator is assumed to be sum_col (will be summed) in wide_transform
+
+        if hasattr(self, 'group_order'):
+            self.numerators = [f"{self.sum_col}_{g}" for g in self.group_order]
+
+            if not hasattr(self, 'denominators'):
+                self.denominators = [f"denom_{g}" for g in self.group_order]
+
         if self.excel_order == ['big_denom','count','pct']:
             self.count_cols = self.numerators + self.denominators
-            self.excel_cols = create_text_list(base_list = self.numerators, return_list_func=pct_list, init_list=self.denominators)
+            self.excel_cols = create_text_list(base_list = self.numerators, 
+                                               return_list_func=pct_list, init_list=self.denominators)
+
+        elif self.excel_order == ['big_denom','denom','count','pct']:
+            self.count_cols = self.big_denom + self.numerators + self.denominators
+            self.excel_cols = create_text_list(base_list = [list(pair) for pair in zip(self.denominators,self.numerators)], 
+                                               return_list_func=pct_list, init_list=self.big_denom )
 
         # create dataframe to write to tables
 
@@ -83,7 +99,7 @@ class TableClass(BaseDataClass):
 
         # identify specific sheet name from list of workbook sheets
 
-        #self.sheet_name = self.get_sheet_name()
+        self.sheet_name = self.get_sheet_name()
         
     def __getattr__(self, attr):
         """
@@ -95,12 +111,14 @@ class TableClass(BaseDataClass):
     def create_table_df(self):
         """
         Method create_table_df to do the following:
-            1. Read in specific SAS ds
-            2. Convert fips to name
-            3. Join to totals
-            4. Apply small cell suppression to all counts
-            5. Get national sum of all counts
-            6. Create percents, will be suppressed if numerator is already suppressed
+            - Read in specific SAS ds
+            - Convert fips to name
+            - Join to totals
+            - Fill denominators and conditionally fill numerators with 0s (only fill numer with 0 if denom > 0)
+            - Apply small cell suppression to all counts
+            - Get national sum of all counts
+            - Create percents, will be suppressed if numerator is already suppressed
+            - Fill all nan values with period
         
         """
 
@@ -108,7 +126,15 @@ class TableClass(BaseDataClass):
 
         df['state'] = convert_fips(df = df)
 
+        if self.gen_wide == True:
+            
+            # call wide_transform to read in long table, sum totals, and transform to get to wide format (one row per state)
+
+            df = wide_transform(df, 'state', **self.details_dict)
+
         df = df.merge(self.totals_df.drop(columns=['submtg_state_cd']), left_on='state', right_on='state', how='outer')
+
+        df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
         df = small_cell_suppress(df = df, suppress_cols = self.count_cols)
 
@@ -116,7 +142,8 @@ class TableClass(BaseDataClass):
 
         df = create_pcts(df = df, numerators = self.numerators, denominators = self.denominators)
 
-        return df.reset_index(drop=True)
+        return df.fillna('.').reset_index(drop=True)
+
 
     def get_sheet_name(self):
         """

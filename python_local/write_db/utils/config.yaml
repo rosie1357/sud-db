@@ -36,24 +36,49 @@ TABLE_MAPPINGS:
     excel_order:
       - big_denom
       - count
-      - pct    
+      - pct
 
   t3:
     sas_ds: state_elgblty_grp_sud
     sheet_num: A.3.
-    wide: True
+    gen_wide: True
     group_col: elgblty_grp_cat
     sum_col: count
     numer_col: pop_sud
+    numer_value: ==1
     group_order: 
-      - 0
       - 1
       - 2
       - 3
       - 4
       - 5
+      - 0
+    big_denom:
+      - pop_tot_base
     excel_order:
       - big_denom
-      - indiv_denoms
+      - denom
+      - count
+      - pct
+
+  t4:
+    sas_ds: state_elgblty_grp_sud
+    sheet_num: A.4.
+    gen_wide: True
+    group_col: elgblty_grp_cat
+    sum_col: count
+    numer_col: pop_sud
+    numer_value: ==1
+    group_order: 
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 0
+    denominators:
+      - pop_sud_tot_base
+    excel_order:
+      - big_denom
       - count
       - pct

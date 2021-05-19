@@ -2,7 +2,11 @@
 from functools import reduce
 
 def pct_list(x):
-    return [x, f"{x}_pct"]
+    if type(x) == list:
+        return x + [f"{x[-1]}_pct"]
+
+    else:
+        return [x, f"{x}_pct"]
 
 def create_text_list(*, base_list, return_list_func, init_list=[]):
     """
@@ -20,3 +24,12 @@ def create_text_list(*, base_list, return_list_func, init_list=[]):
     """
 
     return reduce(lambda lst, x: lst + return_list_func(x), base_list, init_list)
+
+
+def underscore_join(names):
+
+    return '_'.join([name if type(name)==str else str(int(name)) for name in names])
+
+def list_mapper(func, input_list):
+
+    return list(map(func, input_list))
