@@ -4,9 +4,14 @@ import numpy as np
 from ..utils.params import FIPS_NAME_MAP
 from ..utils.text_funcs import list_mapper, underscore_join
 
-def read_sas(*, dir, filename):
+def read_sas(*, dir, filename, renames={}, copies={}):
 
-    return pd.read_sas(dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1')
+    df = pd.read_sas(dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1').rename(columns = renames)
+
+    for orig, copy in copies.items():
+        df[copy] = df[orig]
+
+    return df
 
 def convert_fips(*, df, incol='submtg_state_cd'):
 
@@ -24,6 +29,9 @@ def calc_pct(num, denom, suppress_from_numer, suppress_value):
     if suppress_from_numer == True:
         if num == suppress_value:
             return suppress_value
+
+        elif denom == suppress_value:
+            return np.nan
 
     try:
         return 100 * (num / denom)
@@ -74,17 +82,24 @@ def wide_transform(df, index_col, **kwargs):
 
     """
     
-    # get totals across index_col if group_col is passed in kwargs (assumes sum_col, numer_col, numer_value also assigned)
+    # get totals across index_col if group_cols is passed in kwargs
 
-    if 'group_col' in kwargs.keys():
+    if 'group_cols' in kwargs.keys():
 
-        grouped = df.groupby([index_col, kwargs['group_col']])
+        grouped = df.groupby([index_col] + kwargs['group_cols'])
 
-        df['denom'] = grouped[kwargs['sum_col']].transform(sum)
+        df['denom'] = grouped['denom'].transform(sum)
 
-        wide = df.loc[eval(f"df.{kwargs['numer_col']} {kwargs['numer_value']}")].pivot_table(index=[index_col], columns=[kwargs['group_col']], values=[kwargs['sum_col'],'denom'])
+        # if numer_col is given, must additional subset to numer_col to subset to numerator - otherwise take whole df
 
-        # rename columns based on concatenation of current indices (tuples, which contain params passed above for "columns" and "values")
+        if 'numer_col' in kwargs.keys():
+
+            wide = df.loc[eval(f"df.{kwargs['numer_col']} {kwargs['numer_value']}")].pivot_table(index=[index_col], columns=kwargs['group_cols'], values=['numer','denom'])
+
+        else:
+            wide = df.pivot_table(index=[index_col], columns=kwargs['group_cols'], values=['numer','denom'])
+
+        # rename columns based on concatenation with underscore separator of current indices (tuples, which contain params passed above for "columns" and "values")
 
         wide.columns = list_mapper(underscore_join, wide.columns)
         

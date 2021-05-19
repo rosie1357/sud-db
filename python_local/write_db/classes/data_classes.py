@@ -35,6 +35,8 @@ class BaseDataClass:
 
         self.scol = 2
         self.gen_wide = False
+        self.main_copies = {}
+        self.numer_copies = {}
 
     def prep_totals(self, tot_cols):
         """
@@ -72,18 +74,30 @@ class TableClass(BaseDataClass):
         for key in details_dict:
             setattr(self, key, details_dict[key])
 
-        # create lists of count cols, all table cols
+        # assign specific additional attributes if a separate numerator ds is specified:
+        # join_cols to join main and numerator ds on
+        # separate numerator and denominator copies 
 
+        if hasattr(self, 'sas_ds_numer'):
+            self.join_cols = ['submtg_state_cd'] + self.group_cols
+            self.main_copies = {v : k for k,v in self.__dict__.items() if k  == 'denom'}
+            self.numer_copies = {v : k for k,v in self.__dict__.items() if k  == 'numer'}
+
+        elif hasattr(self, 'gen_wide'):
+            self.main_copies = {v : k for k,v in self.__dict__.items() if k in ['denom','numer']}
+
+
+        # create lists of count cols, all table cols
         # if group_order is given, must dynamically create list of numerators and denominators
-        # numerator is assumed to be sum_col (will be summed) in wide_transform
 
         if hasattr(self, 'group_order'):
-            self.numerators = [f"{self.sum_col}_{g}" for g in self.group_order]
+            self.numerators = [f"numer_{g}" for g in self.group_order]
 
             if not hasattr(self, 'denominators'):
                 self.denominators = [f"denom_{g}" for g in self.group_order]
 
         if self.excel_order == ['big_denom','count','pct']:
+            self.denominators = self.big_denom
             self.count_cols = self.numerators + self.denominators
             self.excel_cols = create_text_list(base_list = self.numerators, 
                                                return_list_func=pct_list, init_list=self.denominators)
@@ -112,6 +126,7 @@ class TableClass(BaseDataClass):
         """
         Method create_table_df to do the following:
             - Read in specific SAS ds
+                - If additional param sas_ds_numer (SAS dataset with only numerators) was passed, must read in and join to base, creating numerator flag
             - Convert fips to name
             - Join to totals
             - Fill denominators and conditionally fill numerators with 0s (only fill numer with 0 if denom > 0)
@@ -122,7 +137,11 @@ class TableClass(BaseDataClass):
         
         """
 
-        df = read_sas(dir=self.sas_dir, filename=self.sas_ds)
+        df = read_sas(dir=self.sas_dir, filename=self.sas_ds, copies = self.main_copies)
+
+        if hasattr(self, 'sas_ds_numer'):
+            df_num = read_sas(dir=self.sas_dir, filename=self.sas_ds_numer, copies = self.numer_copies)
+            df = df.merge(df_num, left_on=self.join_cols, right_on=self.join_cols, how='outer')
 
         df['state'] = convert_fips(df = df)
 
