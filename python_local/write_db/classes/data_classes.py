@@ -7,7 +7,8 @@ from ..tasks.write_excel import read_template_col, write_sheet
 from ..utils.text_funcs import pct_list, create_text_list
 from ..utils.params import STATE_LIST
 
-class BaseDataClass:
+
+class BaseDataClass():
     """
     BaseDataClass to use as parent for TableDataClass to do the following:
          set base properties - defaults that can be overwritten with table-specific params from config
@@ -21,13 +22,10 @@ class BaseDataClass:
 
 
     """
-
+    
     def __init__(self, year, sas_dir, totals_ds, workbook):
 
-        self.year = year
-        self.sas_dir  = sas_dir
-        self.totals_ds = totals_ds
-        self.workbook = workbook
+        self.year, self.sas_dir, self.totals_ds, self.workbook = year, sas_dir, totals_ds, workbook
         
         self.totals_df = self.prep_totals(tot_cols = ['pop_tot','pop_sud_tot'])
         
@@ -37,6 +35,8 @@ class BaseDataClass:
         self.gen_wide = False
         self.main_copies = {}
         self.numer_copies = {}
+        self.denom = 'count'
+        self.numer = 'count'
 
     def prep_totals(self, tot_cols):
         """
@@ -63,16 +63,15 @@ class TableClass(BaseDataClass):
 
     """
     
-    def __init__(self, baseclass_inst, details_dict):
+    def __init__(self, *args, **kwargs):
         """
-        Initialize with BaseDataClass instance, create attributes from passed details_dict key/value pairs
+        Initialize with BaseDataClass instance and pass args, create attributes from all passed kwargs
 
         """
-        self.baseclass_inst = baseclass_inst
-        self.details_dict = details_dict
+        super(TableClass, self).__init__(*args)
 
-        for key in details_dict:
-            setattr(self, key, details_dict[key])
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
         # assign specific additional attributes if a separate numerator ds is specified:
         # join_cols to join main and numerator ds on
@@ -83,7 +82,7 @@ class TableClass(BaseDataClass):
             self.main_copies = {v : k for k,v in self.__dict__.items() if k  == 'denom'}
             self.numer_copies = {v : k for k,v in self.__dict__.items() if k  == 'numer'}
 
-        elif hasattr(self, 'gen_wide'):
+        elif self.gen_wide == True:
             self.main_copies = {v : k for k,v in self.__dict__.items() if k in ['denom','numer']}
 
 
@@ -114,12 +113,6 @@ class TableClass(BaseDataClass):
         # identify specific sheet name from list of workbook sheets
 
         self.sheet_name = self.get_sheet_name()
-        
-    def __getattr__(self, attr):
-        """
-        Assign all attributes of BaseDataClass instance
-        """
-        return getattr(self.baseclass_inst, attr)
 
 
     def create_table_df(self):

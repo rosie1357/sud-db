@@ -45,8 +45,8 @@ TABLE_MAPPINGS:
     sas_ds: state_elgblty_grp_sud
     sheet_num: A.3.
     gen_wide: True
-    group_col: elgblty_grp_cat
-    sum_col: count
+    group_cols: 
+      - elgblty_grp_cat
     numer_col: pop_sud
     numer_value: ==1
     group_order: 
@@ -68,8 +68,8 @@ TABLE_MAPPINGS:
     sas_ds: state_elgblty_grp_sud
     sheet_num: A.4.
     gen_wide: True
-    group_col: elgblty_grp_cat
-    sum_col: count
+    group_cols: 
+      - elgblty_grp_cat
     numer_col: pop_sud
     numer_value: ==1
     group_order: 
@@ -94,8 +94,6 @@ TABLE_MAPPINGS:
     group_cols: 
       - agecat
       - disabled_yr
-    denom: count
-    numer: count
     group_order: 
       - '1_0'
       - '1_1'
