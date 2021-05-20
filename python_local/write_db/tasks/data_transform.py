@@ -79,7 +79,6 @@ def wide_transform(df, index_col, **kwargs):
     returns:
         df: dataframe transposed long to wide
 
-
     """
     
     # get totals across index_col if group_cols is passed in kwargs

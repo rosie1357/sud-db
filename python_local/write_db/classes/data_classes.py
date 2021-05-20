@@ -58,8 +58,8 @@ class TableClass(BaseDataClass):
     TableClass to inherit from instance of BaseDataClass to get base attributes and totals df
 
     Must initialize with:
-        baseclass_inst BaseDataClass: instance of BaseDataClass
-        details_dict dict: dict with all details to make table (read in from config file)
+        args to pass to BaseDataClass
+        kwargs to use for TableClass to set all attributes (variable based on params passed in config)
 
     """
     
@@ -115,7 +115,7 @@ class TableClass(BaseDataClass):
         self.sheet_name = self.get_sheet_name()
 
 
-    def create_table_df(self):
+    def create_table_df(self, **kwargs):
         """
         Method create_table_df to do the following:
             - Read in specific SAS ds
@@ -142,7 +142,7 @@ class TableClass(BaseDataClass):
             
             # call wide_transform to read in long table, sum totals, and transform to get to wide format (one row per state)
 
-            df = wide_transform(df, 'state', **self.details_dict)
+            df = wide_transform(df, 'state', **self.__dict__)
 
         df = df.merge(self.totals_df.drop(columns=['submtg_state_cd']), left_on='state', right_on='state', how='outer')
 
