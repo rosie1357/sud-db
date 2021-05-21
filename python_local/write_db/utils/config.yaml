@@ -1,9 +1,6 @@
 # config for sud db tables
 
 TABLE_MAPPINGS:
-# config for sud db tables
-
-TABLE_MAPPINGS:
   t1:
     sas_ds: state_sud_methods
     sheet_num: A.1.
@@ -65,13 +62,11 @@ TABLE_MAPPINGS:
       - pct
 
   t4:
-    sas_ds: state_elgblty_grp_sud
+    sas_ds: state_sud_elgblty_grp
     sheet_num: A.4.
     gen_wide: True
     group_cols: 
       - elgblty_grp_cat
-    numer_col: pop_sud
-    numer_value: ==1
     group_order: 
       - 1
       - 2
@@ -105,5 +100,25 @@ TABLE_MAPPINGS:
     excel_order:
       - big_denom
       - denom
+      - count
+      - pct
+
+  t6:
+    sas_ds: state_disabled
+    sheet_num: A.6.
+    gen_wide: True
+    group_cols: 
+      - agecat
+      - disabled_yr
+    group_order: 
+      - '1_0'
+      - '1_1'
+      - '2_0'
+      - '2_1'
+      - '3_0'
+    big_denom:
+      - pop_sud_tot_base
+    excel_order:
+      - big_denom
       - count
       - pct

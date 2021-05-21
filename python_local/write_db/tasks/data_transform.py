@@ -2,13 +2,12 @@ import pandas as pd
 import numpy as np
 
 from ..utils.params import FIPS_NAME_MAP
-from ..utils.text_funcs import list_mapper, underscore_join
 
 def read_sas(*, dir, filename, renames={}, copies={}):
 
     df = pd.read_sas(dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1').rename(columns = renames)
 
-    for orig, copy in copies.items():
+    for copy, orig in copies.items():
         df[copy] = df[orig]
 
     return df
@@ -68,41 +67,6 @@ def create_pcts(*, df, numerators, denominators, suffix='_pct', suppress_from_nu
         df[f"{pair[0]}{suffix}"] = df[list(pair)].apply(lambda x: calc_pct(*x, suppress_from_numer, suppress_value), axis=1)
 
     return df
-
-def wide_transform(df, index_col, **kwargs):
-    """
-    Function wide_transform to take input df from wide to long
-    params:
-        df df: input df
-        kwargs dict: additional params to dictate transformations
-
-    returns:
-        df: dataframe transposed long to wide
-
-    """
-    
-    # get totals across index_col if group_cols is passed in kwargs
-
-    if 'group_cols' in kwargs.keys():
-
-        grouped = df.groupby([index_col] + kwargs['group_cols'])
-
-        df['denom'] = grouped['denom'].transform(sum)
-
-        # if numer_col is given, must additional subset to numer_col to subset to numerator - otherwise take whole df
-
-        if 'numer_col' in kwargs.keys():
-
-            wide = df.loc[eval(f"df.{kwargs['numer_col']} {kwargs['numer_value']}")].pivot_table(index=[index_col], columns=kwargs['group_cols'], values=['numer','denom'])
-
-        else:
-            wide = df.pivot_table(index=[index_col], columns=kwargs['group_cols'], values=['numer','denom'])
-
-        # rename columns based on concatenation with underscore separator of current indices (tuples, which contain params passed above for "columns" and "values")
-
-        wide.columns = list_mapper(underscore_join, wide.columns)
-        
-        return wide
 
 def zero_fill_cond(*, df, base_cols, cond_cols):
     """

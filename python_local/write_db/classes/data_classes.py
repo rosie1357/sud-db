@@ -1,10 +1,10 @@
 import pandas as pd
 
 from ..tasks.national_values import get_national_values
-from ..tasks.data_transform import read_sas, convert_fips, create_pcts, wide_transform, zero_fill_cond
+from ..tasks.data_transform import read_sas, convert_fips, create_pcts, zero_fill_cond
 from ..tasks.small_cell_suppress import small_cell_suppress
 from ..tasks.write_excel import read_template_col, write_sheet
-from ..utils.text_funcs import pct_list, create_text_list
+from ..utils.text_funcs import pct_list, create_text_list, list_mapper, underscore_join
 from ..utils.params import STATE_LIST
 
 
@@ -37,6 +37,7 @@ class BaseDataClass():
         self.numer_copies = {}
         self.denom = 'count'
         self.numer = 'count'
+        self.values_transpose = ['numer','denom']
 
     def prep_totals(self, tot_cols):
         """
@@ -73,17 +74,35 @@ class TableClass(BaseDataClass):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+        if self.excel_order == ['big_denom','count','pct']:
+            self.indiv_denoms = False
+
+        elif self.excel_order == ['big_denom','denom','count','pct']:
+            self.indiv_denoms = True
+
         # assign specific additional attributes if a separate numerator ds is specified:
         # join_cols to join main and numerator ds on
         # separate numerator and denominator copies 
 
-        if hasattr(self, 'sas_ds_numer'):
-            self.join_cols = ['submtg_state_cd'] + self.group_cols
-            self.main_copies = {v : k for k,v in self.__dict__.items() if k  == 'denom'}
-            self.numer_copies = {v : k for k,v in self.__dict__.items() if k  == 'numer'}
+        if self.gen_wide:
 
-        elif self.gen_wide == True:
-            self.main_copies = {v : k for k,v in self.__dict__.items() if k in ['denom','numer']}
+            # set state and big denom as index cols to pass to wide_transform
+
+            self.index_cols = ['state'] + self.big_denom
+
+            if hasattr(self, 'sas_ds_numer'):
+                self.join_cols = ['submtg_state_cd'] + self.group_cols
+                self.main_copies = {k : v for k,v in self.__dict__.items() if k  == 'denom'}
+                self.numer_copies = {k : v for k,v in self.__dict__.items() if k  == 'numer'}
+
+            else:
+                self.main_copies = {k : v for k,v in self.__dict__.items() if k in ['numer','denom']}
+
+                # if not using individual denoms, remove denom from dict/list
+
+                if self.indiv_denoms == False:
+                    self.main_copies.pop('denom')
+                    self.values_transpose.remove('denom')
 
 
         # create lists of count cols, all table cols
@@ -91,17 +110,16 @@ class TableClass(BaseDataClass):
 
         if hasattr(self, 'group_order'):
             self.numerators = [f"numer_{g}" for g in self.group_order]
-
-            if not hasattr(self, 'denominators'):
+            if self.indiv_denoms == True:
                 self.denominators = [f"denom_{g}" for g in self.group_order]
 
-        if self.excel_order == ['big_denom','count','pct']:
+        if self.indiv_denoms == False:
             self.denominators = self.big_denom
             self.count_cols = self.numerators + self.denominators
             self.excel_cols = create_text_list(base_list = self.numerators, 
                                                return_list_func=pct_list, init_list=self.denominators)
 
-        elif self.excel_order == ['big_denom','denom','count','pct']:
+        elif self.indiv_denoms == True:
             self.count_cols = self.big_denom + self.numerators + self.denominators
             self.excel_cols = create_text_list(base_list = [list(pair) for pair in zip(self.denominators,self.numerators)], 
                                                return_list_func=pct_list, init_list=self.big_denom )
@@ -113,6 +131,40 @@ class TableClass(BaseDataClass):
         # identify specific sheet name from list of workbook sheets
 
         self.sheet_name = self.get_sheet_name()
+
+    def wide_transform(self, df):
+        """
+        Function wide_transform to take input df from wide to long
+        params:
+            df: df with long values to transform to wide
+            index cols list: list of index col(s)
+
+        returns:
+            df: dataframe transposed long to wide
+
+        """
+
+        # if have individual denoms, get totals across index_cols and group_cols - assume must sum and join back on
+
+        if self.indiv_denoms == True:
+
+            grouped = df.groupby(self.index_cols + self.group_cols)
+            df['denom'] = grouped['denom'].transform(sum)
+
+        # if numer_col is given, must additional subset to numer_col to subset to numerator - otherwise take whole df
+
+        if 'numer_col' in self.__dict__.keys():
+
+            wide = df.loc[eval(f"df.{self.numer_col} {self.numer_value}")].pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
+
+        else:
+            wide = df.pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
+
+        # rename columns based on concatenation with underscore separator of current indices (tuples, which contain params passed above for "columns" and "values")
+
+        wide.columns = list_mapper(underscore_join, wide.columns)
+        
+        return wide.reset_index()
 
 
     def create_table_df(self, **kwargs):
@@ -138,13 +190,15 @@ class TableClass(BaseDataClass):
 
         df['state'] = convert_fips(df = df)
 
+        df = df.merge(self.totals_df.drop(columns=['submtg_state_cd']), left_on='state', right_on='state', how='outer')
+
         if self.gen_wide == True:
             
             # call wide_transform to read in long table, sum totals, and transform to get to wide format (one row per state)
 
-            df = wide_transform(df, 'state', **self.__dict__)
+            df = self.wide_transform(df)
 
-        df = df.merge(self.totals_df.drop(columns=['submtg_state_cd']), left_on='state', right_on='state', how='outer')
+            print(df.columns)
 
         df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
