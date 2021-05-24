@@ -1,12 +1,12 @@
 
 from functools import reduce
 
-def pct_list(x):
+def stat_list(x):
     if type(x) == list:
-        return x + [f"{x[-1]}_pct"]
+        return x + [f"{x[-1]}_stat"]
 
     else:
-        return [x, f"{x}_pct"]
+        return [x, f"{x}_stat"]
 
 def create_text_list(*, base_list, return_list_func, init_list=[]):
     """
@@ -14,8 +14,8 @@ def create_text_list(*, base_list, return_list_func, init_list=[]):
     params:
         base_list list: list of initial text strings to apply specific function to to expand each element of list
         return_list_func: function to be applied to each input string element which will return a list based on that element
-            e.g. if return_list_func is a function that returns the element and the element + _pct, the new list will contain the passed element 
-                 plus the element + _pct, with each pair next to each other: if base_list = ['a','b'] then return will be ['a','a_pct','b','b_pct']
+            e.g. if return_list_func is a function that returns the element and the element + _stat, the new list will contain the passed element 
+                 plus the element + _stat, with each pair next to each other: if base_list = ['a','b'] then return will be ['a','a_stat','b','b_stat']
         init_list list: list to initialize with, default is empty
 
     returns:

@@ -18,7 +18,7 @@ TABLE_MAPPINGS:
     excel_order:
       - big_denom
       - count
-      - pct
+      - stat
 
   t2:
     sas_ds: state_sud_methods
@@ -36,7 +36,7 @@ TABLE_MAPPINGS:
     excel_order:
       - big_denom
       - count
-      - pct
+      - stat
 
   t3:
     sas_ds: state_elgblty_grp_sud
@@ -44,6 +44,8 @@ TABLE_MAPPINGS:
     gen_wide: True
     group_cols: 
       - elgblty_grp_cat
+    denom: count
+    numer: count
     numer_col: pop_sud
     numer_value: ==1
     group_order: 
@@ -59,14 +61,18 @@ TABLE_MAPPINGS:
       - big_denom
       - denom
       - count
-      - pct
+      - stat
 
   t4:
-    sas_ds: state_sud_elgblty_grp
+    sas_ds: state_elgblty_grp_sud
     sheet_num: A.4.
     gen_wide: True
     group_cols: 
       - elgblty_grp_cat
+    denom: count
+    numer: count
+    numer_col: pop_sud
+    numer_value: ==1
     group_order: 
       - 1
       - 2
@@ -79,16 +85,19 @@ TABLE_MAPPINGS:
     excel_order:
       - big_denom
       - count
-      - pct
+      - stat
 
   t5:
     sas_ds: state_disabled2
-    sas_ds_numer: state_disabled
+    sas_ds_numer: 
+      - state_disabled
     sheet_num: A.5.
     gen_wide: True
     group_cols: 
       - agecat
       - disabled_yr
+    denom: count
+    numer: count
     group_order: 
       - '1_0'
       - '1_1'
@@ -101,24 +110,92 @@ TABLE_MAPPINGS:
       - big_denom
       - denom
       - count
-      - pct
+      - stat
 
-  t6:
-    sas_ds: state_disabled
-    sheet_num: A.6.
-    gen_wide: True
-    group_cols: 
-      - agecat
-      - disabled_yr
-    group_order: 
-      - '1_0'
-      - '1_1'
-      - '2_0'
-      - '2_1'
-      - '3_0'
+  t9:
+    sas_ds: state_sud_set_srvc
+    sheet_num: C.1.
+    numerators: 
+      - trt_srvc_case_mgmt 
+      - trt_srvc_comm_sprt 
+      - trt_srvc_cnsltn 
+      - trt_srvc_cnsling 
+      - trt_srvc_detox 
+      - trt_srvc_emer_srvcs 
+      - trt_srvc_inpat 
+      - trt_srvc_intrvn 
+      - trt_srvc_mat 
+      - trt_srvc_med_mgmt
+      - trt_srvc_obs_care 
+      - trt_srvc_other 
+      - trt_srvc_part_hosp 
+      - trt_srvc_peer_sprt 
+      - trt_srvc_phys_srvcs 
+      - trt_srvc_rx 
+      - trt_srvc_scn_assmt 
+      - trt_srvc_treat
     big_denom:
       - pop_sud_tot_base
     excel_order:
       - big_denom
       - count
-      - pct
+      - stat
+
+  t10:
+    sas_ds: state_sud_set_srvc
+    sheet_num: C.2.
+    numerators: 
+      - inpatient
+      - outpatient
+      - residential
+      - home
+      - community
+      - unknown
+    big_denom:
+      - pop_sud_tot_base
+    excel_order:
+      - big_denom
+      - count
+      - stat
+
+  t11:
+    sas_ds: state_sud_set_srvc
+    sheet_num: D.1.
+    group_cols: []
+    sas_ds_numer: 
+      - stdy_inpat
+      - stdy_mat
+      - stdy_obs_care
+      - stdy_part_hosp
+      - stdy_treat
+      - state_sud_count_claims
+    numerators: 
+      - tot_count_cnsltn 
+      - tot_count_cnsling 
+      - tot_count_emer_srvcs 
+      - tot_count_inpat 
+      - tot_count_mat 
+      - tot_count_obs_care 
+      - tot_count_part_hosp 
+      - tot_count_phys_srvcs 
+      - tot_count_scn_assmt 
+      - tot_count_treat
+    denominators: 
+      - trt_srvc_cnsltn 
+      - trt_srvc_cnsling 
+      - trt_srvc_emer_srvcs 
+      - trt_srvc_inpat 
+      - trt_srvc_mat 
+      - trt_srvc_obs_care 
+      - trt_srvc_part_hosp 
+      - trt_srvc_phys_srvcs 
+      - trt_srvc_scn_assmt 
+      - trt_srvc_treat
+    big_denom:
+      - pop_sud_tot_base
+    prop_mult: 1
+    excel_order:
+      - big_denom
+      - denom
+      - count
+      - stat

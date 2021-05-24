@@ -1,10 +1,12 @@
 import pandas as pd
 
 from ..tasks.national_values import get_national_values
-from ..tasks.data_transform import read_sas, convert_fips, create_pcts, zero_fill_cond
+from ..tasks.data_transform import convert_fips, create_stats, zero_fill_cond
+from ..tasks.read_data import read_sas
 from ..tasks.small_cell_suppress import small_cell_suppress
 from ..tasks.write_excel import read_template_col, write_sheet
-from ..utils.text_funcs import pct_list, create_text_list, list_mapper, underscore_join
+from ..utils.text_funcs import stat_list, create_text_list, list_mapper, underscore_join
+from ..utils.df_funcs import list_dup_cols
 from ..utils.params import STATE_LIST
 
 
@@ -35,9 +37,8 @@ class BaseDataClass():
         self.gen_wide = False
         self.main_copies = {}
         self.numer_copies = {}
-        self.denom = 'count'
-        self.numer = 'count'
         self.values_transpose = ['numer','denom']
+        self.prop_mult = 100
 
     def prep_totals(self, tot_cols):
         """
@@ -74,15 +75,18 @@ class TableClass(BaseDataClass):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        if self.excel_order == ['big_denom','count','pct']:
+        if self.excel_order == ['big_denom','count','stat']:
             self.indiv_denoms = False
 
-        elif self.excel_order == ['big_denom','denom','count','pct']:
+        elif self.excel_order == ['big_denom','denom','count','stat']:
             self.indiv_denoms = True
 
         # assign specific additional attributes if a separate numerator ds is specified:
         # join_cols to join main and numerator ds on
         # separate numerator and denominator copies 
+
+        if hasattr(self, 'group_cols'):
+            self.join_cols = ['submtg_state_cd'] + self.group_cols
 
         if self.gen_wide:
 
@@ -91,7 +95,6 @@ class TableClass(BaseDataClass):
             self.index_cols = ['state'] + self.big_denom
 
             if hasattr(self, 'sas_ds_numer'):
-                self.join_cols = ['submtg_state_cd'] + self.group_cols
                 self.main_copies = {k : v for k,v in self.__dict__.items() if k  == 'denom'}
                 self.numer_copies = {k : v for k,v in self.__dict__.items() if k  == 'numer'}
 
@@ -117,12 +120,12 @@ class TableClass(BaseDataClass):
             self.denominators = self.big_denom
             self.count_cols = self.numerators + self.denominators
             self.excel_cols = create_text_list(base_list = self.numerators, 
-                                               return_list_func=pct_list, init_list=self.denominators)
+                                               return_list_func=stat_list, init_list=self.denominators)
 
         elif self.indiv_denoms == True:
             self.count_cols = self.big_denom + self.numerators + self.denominators
             self.excel_cols = create_text_list(base_list = [list(pair) for pair in zip(self.denominators,self.numerators)], 
-                                               return_list_func=pct_list, init_list=self.big_denom )
+                                               return_list_func=stat_list, init_list=self.big_denom )
 
         # create dataframe to write to tables
 
@@ -185,8 +188,13 @@ class TableClass(BaseDataClass):
         df = read_sas(dir=self.sas_dir, filename=self.sas_ds, copies = self.main_copies)
 
         if hasattr(self, 'sas_ds_numer'):
-            df_num = read_sas(dir=self.sas_dir, filename=self.sas_ds_numer, copies = self.numer_copies)
-            df = df.merge(df_num, left_on=self.join_cols, right_on=self.join_cols, how='outer')
+            for sas_ds in self.sas_ds_numer:
+                df = df.merge(read_sas(dir=self.sas_dir, filename=sas_ds, copies = self.numer_copies),
+                     left_on=self.join_cols, right_on=self.join_cols, how='outer')
+
+            # drop any dup columns (non-needed columns that joined on with multiple ds merges) - these cause concat to error
+
+            df.drop(columns = list_dup_cols(df), inplace=True)
 
         df['state'] = convert_fips(df = df)
 
@@ -198,15 +206,17 @@ class TableClass(BaseDataClass):
 
             df = self.wide_transform(df)
 
-            print(df.columns)
-
         df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
-        df = small_cell_suppress(df = df, suppress_cols = self.count_cols)
+        df = small_cell_suppress(df = df, suppress_cols = self.count_cols).reset_index(drop=True)
 
-        df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum')])
+        nat = get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)
 
-        df = create_pcts(df = df, numerators = self.numerators, denominators = self.denominators)
+        df = pd.concat([df, nat], ignore_index=True)
+
+        #print(df.columns)
+
+        df = create_stats(df = df, numerators = self.numerators, denominators = self.denominators, prop_mult = self.prop_mult)
 
         return df.fillna('.').reset_index(drop=True)
 

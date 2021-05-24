@@ -3,25 +3,15 @@ import numpy as np
 
 from ..utils.params import FIPS_NAME_MAP
 
-def read_sas(*, dir, filename, renames={}, copies={}):
-
-    df = pd.read_sas(dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1').rename(columns = renames)
-
-    for copy, orig in copies.items():
-        df[copy] = df[orig]
-
-    return df
-
 def convert_fips(*, df, incol='submtg_state_cd'):
 
     return df[incol].map(lambda x: FIPS_NAME_MAP[x])
     
-
-def calc_pct(num, denom, suppress_from_numer, suppress_value):
+def calc_prop(num, denom, suppress_from_numer, suppress_value, prop_mult):
     """
-    Helper function calc_pct to be applied row-wise to each set of numerator/denominators
+    Helper function calc_prop to be applied row-wise to each set of numerator/denominators
     If suppress_from_numer == True, will return suppressed value if numer is suppressed
-    Otherwise, returns num/denom * 100
+    Otherwise, returns num/denom * prop_mult
 
     """
     
@@ -33,38 +23,39 @@ def calc_pct(num, denom, suppress_from_numer, suppress_value):
             return np.nan
 
     try:
-        return 100 * (num / denom)
+        return prop_mult * (num / denom)
 
     except ZeroDivisionError:
         return np.nan
 
-def create_pcts(*, df, numerators, denominators, suffix='_pct', suppress_from_numer=True, suppress_value='DS'):
+def create_stats(*, df, numerators, denominators, prop_mult, suffix='_stat', suppress_from_numer=True, suppress_value='DS'):
     """
-    Function create_pcts to create percents based on passed numerator/denominator params
+    Function create_stats to create stats (num/denom multiplied by given value) based on passed numerator/denominator params
     params:
         df df: df with num/denom cols
         numerators list: list of numerators (will make one percent for each numerator)
         denominators list: list of denominators, can be passed one of two ways:
-            - if 1 denom and >1 numerators passed, the 1 denom will be used to create all percents
-            - if # denoms = # of numerators, create percents based on position with each denom / each num in same position
+            - if 1 denom and >1 numerators passed, the 1 denom will be used to create all stats
+            - if # denoms = # of numerators, create stats based on position with each denom / each num in same position
             - note if # denom > 1 but NOT equal to # of numerators, will force error
-        suffix str: suffix to add to numerator name to make pct, default = _pct
-        suppress_from_numer bool: boolean to indicate whether calculated pct should be set suppressed value if numer is suppressed already, default = True
+        prop_mult int: int to multiple num/denom by, e.g. if give 100 will create pct
+        suffix str: suffix to add to numerator name to make stat, default = _stat
+        suppress_from_numer bool: boolean to indicate whether calculated stat should be set suppressed value if numer is suppressed already, default = True
         suppress_value str: value indicating suppression, default = 'DS'
 
     returns:
-        df with percents added
+        df with stats added
 
     """
 
     if len(denominators) == 1 and len(numerators) > 1:
         denominators = denominators * len(numerators)
 
-    assert len(denominators) == len(numerators), "ERROR: Length of numerators != length of denominators passed to create_pcts: FIX"
+    assert len(denominators) == len(numerators), "ERROR: Length of numerators != length of denominators passed to create_stats: FIX"
 
     for pair in zip(numerators, denominators):
 
-        df[f"{pair[0]}{suffix}"] = df[list(pair)].apply(lambda x: calc_pct(*x, suppress_from_numer, suppress_value), axis=1)
+        df[f"{pair[0]}{suffix}"] = df[list(pair)].apply(lambda x: calc_prop(*x, suppress_from_numer, suppress_value, prop_mult), axis=1)
 
     return df
 
