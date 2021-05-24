@@ -2,7 +2,6 @@ import pandas as pd
 
 from ..tasks.national_values import get_national_values
 from ..tasks.data_transform import convert_fips, create_stats, zero_fill_cond
-from ..tasks.read_data import read_sas
 from ..tasks.small_cell_suppress import small_cell_suppress
 from ..tasks.write_excel import read_template_col, write_sheet
 from ..utils.text_funcs import stat_list, create_text_list, list_mapper, underscore_join
@@ -37,8 +36,27 @@ class BaseDataClass():
         self.gen_wide = False
         self.main_copies = {}
         self.numer_copies = {}
+        self.numer_col_any = []
         self.values_transpose = ['numer','denom']
         self.prop_mult = 100
+
+    def read_sas(self, filename, copies={}):
+
+        df = pd.read_sas(self.sas_dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1')
+
+        for copy, orig in copies.items():
+            df[copy] = df[orig]
+
+        # if numer_col_any is set, must do the following for any cols in numer_col_any that are also in df cols:
+        #   - subset to col == 1
+        #   - rename count col to numer_col_any + _count
+        # TODO: Make this dynamic, this hard coding was the simplest but not good way to do this!
+
+        if hasattr(self, 'numer_col_any'):
+            for col in list(set(df.columns) & set(self.numer_col_any)):
+                df = df.loc[df[col]==1].rename(columns={'count' : f"{col}_count"})
+
+        return df
 
     def prep_totals(self, tot_cols):
         """
@@ -46,7 +64,7 @@ class BaseDataClass():
         Rename totals to have _base suffix to avoid same named columns if joining to same ds
         """
         
-        df = read_sas(dir=self.sas_dir, filename=self.totals_ds)[['submtg_state_cd'] + tot_cols]
+        df = self.read_sas(self.totals_ds)[['submtg_state_cd'] + tot_cols]
 
         df['state'] = convert_fips(df=df)
 
@@ -185,11 +203,11 @@ class TableClass(BaseDataClass):
         
         """
 
-        df = read_sas(dir=self.sas_dir, filename=self.sas_ds, copies = self.main_copies)
+        df = self.read_sas(self.sas_ds, copies = self.main_copies)
 
         if hasattr(self, 'sas_ds_numer'):
             for sas_ds in self.sas_ds_numer:
-                df = df.merge(read_sas(dir=self.sas_dir, filename=sas_ds, copies = self.numer_copies),
+                df = df.merge(self.read_sas(sas_ds, copies=self.numer_copies),
                      left_on=self.join_cols, right_on=self.join_cols, how='outer')
 
             # drop any dup columns (non-needed columns that joined on with multiple ds merges) - these cause concat to error

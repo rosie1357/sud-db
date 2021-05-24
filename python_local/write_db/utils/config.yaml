@@ -1,6 +1,7 @@
 # config for sud db tables
 
 TABLE_MAPPINGS:
+
   t1:
     sas_ds: state_sud_methods
     sheet_num: A.1.
@@ -197,5 +198,38 @@ TABLE_MAPPINGS:
     excel_order:
       - big_denom
       - denom
+      - count
+      - stat
+
+  t12:
+    sas_ds: state_sud_methods
+    sheet_num: E.1.
+    group_cols: []
+    sas_ds_numer: 
+      - state_sud_bene_mc
+      - state_sud_bene_ffs
+    numer_col_any:
+      - claim_mc
+      - claim_ffs
+    numerators: 
+      - claim_mc_count
+      - claim_ffs_count
+    big_denom:
+      - pop_sud_tot
+    excel_order:
+      - big_denom
+      - count
+      - stat
+
+  t13:
+    sas_ds: state_sud_dates_30
+    sheet_num: F.1.
+    numerators: 
+      - any_service30
+      - mult_service30
+    big_denom:
+      - nbenes
+    excel_order:
+      - big_denom
       - count
       - stat
