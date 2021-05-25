@@ -122,7 +122,7 @@ class TableClass(BaseDataClass):
                 # if not using individual denoms, remove denom from dict/list
 
                 if self.indiv_denoms == False:
-                    self.main_copies.pop('denom')
+                    self.main_copies.pop('denom', None)
                     self.values_transpose.remove('denom')
 
 
