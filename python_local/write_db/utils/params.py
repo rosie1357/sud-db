@@ -13,7 +13,7 @@ TIME_NOW = time.strftime("%Y%m%d-%H%M%S")
 DATE_NOW = datetime.today().strftime('%Y-%m-%d')
 DATE_NOW_FMT = datetime.today().strftime("%B %d, %Y")
 
-STATE_LIST = [str(state) for state in states.STATES_AND_TERRITORIES] + ['District of Columbia','United States']
+STATE_LIST = [str(state) for state in states.STATES_AND_TERRITORIES] + ['District of Columbia','United States','Total number of states']
 
 # mappings of name/abbrev to FIPS
 

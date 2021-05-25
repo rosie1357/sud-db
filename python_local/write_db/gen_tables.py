@@ -1,6 +1,6 @@
 
 from .utils.params import SASDIR, TOTALS_DS
-from .classes.data_classes import BaseDataClass, TableClass
+from .classes.data_classes import BaseDataClass, TableClass, TableClassCountsOnly
 
 
 def gen_tables(*, year, version, workbook, table_details):
@@ -14,11 +14,25 @@ def gen_tables(*, year, version, workbook, table_details):
 
     """
 
-    # loop over all tables in table_details to create TableClass - initialize with args to pass to BaseDataClass and kwargs to pass to TableClass
+    # loop over all tables in table_details to create regular TableClass (default) or child class if specified
 
     for table, kwargs in table_details.items():
 
-        _tableclass = TableClass(year, SASDIR(year), TOTALS_DS, workbook, **kwargs)
+        # identify class to use for given measure - TableClass is default
+
+        use_class = kwargs.get('use_class', 'TableClass')
+
+        # create table class, set initial attributes
+
+        _tableclass = eval(use_class)(year, SASDIR(year), TOTALS_DS, workbook, **kwargs)
+
+        _tableclass.set_initial_attribs()
+
+        # prep to write to tables
+
+        _tableclass.prep_for_tables()
+
+        # write to excel
 
         _tableclass.write_excel_sheet()
         

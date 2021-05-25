@@ -93,6 +93,12 @@ class TableClass(BaseDataClass):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def set_initial_attribs(self):
+        """
+        Method to set initial attributes using attribs assigned at init
+
+        """
+
         if self.excel_order == ['big_denom','count','stat']:
             self.indiv_denoms = False
 
@@ -145,12 +151,14 @@ class TableClass(BaseDataClass):
             self.excel_cols = create_text_list(base_list = [list(pair) for pair in zip(self.denominators,self.numerators)], 
                                                return_list_func=stat_list, init_list=self.big_denom )
 
-        # create dataframe to write to tables
+    def prep_for_tables(self):
+        """
+        Method prep_for_tables to call class methods to create table df and pull sheet name from Excel template, and
+        assign to class attributes
+
+        """
 
         self.table_df = self.create_table_df()
-
-        # identify specific sheet name from list of workbook sheets
-
         self.sheet_name = self.get_sheet_name()
 
     def wide_transform(self, df):
@@ -188,7 +196,7 @@ class TableClass(BaseDataClass):
         return wide.reset_index()
 
 
-    def create_table_df(self, **kwargs):
+    def create_table_df(self):
         """
         Method create_table_df to do the following:
             - Read in specific SAS ds
@@ -200,6 +208,9 @@ class TableClass(BaseDataClass):
             - Get national sum of all counts
             - Create percents, will be suppressed if numerator is already suppressed
             - Fill all nan values with period
+
+        Returns:
+            df to be assigned to table_df
         
         """
 
@@ -228,11 +239,7 @@ class TableClass(BaseDataClass):
 
         df = small_cell_suppress(df = df, suppress_cols = self.count_cols).reset_index(drop=True)
 
-        nat = get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)
-
-        df = pd.concat([df, nat], ignore_index=True)
-
-        #print(df.columns)
+        df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)], ignore_index=True)
 
         df = create_stats(df = df, numerators = self.numerators, denominators = self.denominators, prop_mult = self.prop_mult)
 
@@ -275,13 +282,53 @@ class TableClass(BaseDataClass):
 
         to_table = self.table_df.merge(order_df, left_on='state', right_on='state', how='outer', indicator = '_merged')
 
-        assert set(to_table['_merged']) == set(['both']), f"ERROR: All values of state not on both template and table_df for {self.table_num} - FIX"
+        assert set(to_table['_merged']) == set(['both']), f"ERROR: All values of state not on both template and table_df for {self.sheet_num} - FIX"
 
         # write to sheet
 
         write_sheet(workbook = self.workbook, df = to_table, sheet_name = self.sheet_name, cols = self.excel_cols, scol=self.scol, row_col = 'rownum')
         
 
+class TableClassCountsOnly(TableClass):
+    """
+    TableClassCountsOnly to inherit all attributes/methods from TableClass and overwrite main methods (minimal data prep needed for counts only)
+
+    """
+
+    def set_initial_attribs(self):
+
+        """
+        Method to set initial attributes using attribs assigned at init, overriding method from TableClass
+
+        """
+
+        self.excel_cols = self.count_cols
+
+
+    def create_table_df(self):
+        """
+        Method create_table_df to override method from TableClass to do minimal prep on input sas DS
+        Does the following steps:
+
+            - Read in specific SAS ds
+            - Convert fips to name
+            - Convert counts to set > 0 to 1, otherwise 0
+            - Sum to get first total row
+
+        Returns:
+            df to be assigned to table_df
+        
+        """
+
+        df = self.read_sas(self.sas_ds)
+
+        df['state'] = convert_fips(df = df)
+
+        df[self.count_cols] = df[self.count_cols].applymap(lambda x: 1 if x > 0 else 0)
+
+        df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum', state_name='Total number of states').reset_index(drop=True)], ignore_index=True)
+
+        return df.reset_index(drop=True)
 
 
 

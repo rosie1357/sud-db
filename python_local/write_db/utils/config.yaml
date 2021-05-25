@@ -134,6 +134,30 @@ TABLE_MAPPINGS:
       - count
       - stat
 
+    t8:
+      sas_ds: state_sud_set_srvc
+      sheet_num: B.2.
+      use_class: TableClassCountsOnly
+      count_cols: 
+        - trt_srvc_case_mgmt 
+        - trt_srvc_comm_sprt 
+        - trt_srvc_cnsltn 
+        - trt_srvc_cnsling 
+        - trt_srvc_detox 
+        - trt_srvc_emer_srvcs 
+        - trt_srvc_inpat 
+        - trt_srvc_intrvn 
+        - trt_srvc_mat 
+        - trt_srvc_med_mgmt
+        - trt_srvc_obs_care 
+        - trt_srvc_other 
+        - trt_srvc_part_hosp 
+        - trt_srvc_peer_sprt 
+        - trt_srvc_phys_srvcs 
+        - trt_srvc_rx 
+        - trt_srvc_scn_assmt 
+        - trt_srvc_treat
+
   t9:
     sas_ds: state_sud_set_srvc
     sheet_num: C.1.
