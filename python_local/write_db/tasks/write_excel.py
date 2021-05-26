@@ -39,14 +39,17 @@ def read_template_col(*, workbook, sheet_name, state_list, col = 'A', state_col_
     
     return state_order
 
-def write_cell(row_col, col_name, sheet, column):
+def write_cell(row_col, col_value, sheet, column, col_name):
     """
     Function write_cell to be applied row-wise to input df to write value to excel cell
     params:
         row_col str: name of df column that contains row # to write to
-        col_name str: name of df column to write to sheet
+        col_value df value: value in df column to write to sheet
         sheet str: name of sheet
         column int: excel column # to write to
+        col_name str: name of column writing to sheet
+
+    If col_name ends in _stat, will apply comma with 1 decimal format, otherwise comma with 0 decimals
 
     returns:
         none
@@ -54,10 +57,15 @@ def write_cell(row_col, col_name, sheet, column):
     """
 
     cellref = sheet.cell(row=row_col, column=column)
-    cellref.value = col_name
+    cellref.value = col_value
 
+    if col_name.endswith('_stat'):
+        cellref.number_format = '###,##0.0'
 
-def write_sheet(*, workbook, df, sheet_name, cols, scol, srow=None, row_col=None, formats=None, default_format=''):
+    else:
+        cellref.number_format = '###,##0'
+
+def write_sheet(*, workbook, df, sheet_name, cols, scol, srow=None, row_col=None):
     """
         function write_text to write data to Excel sheet by cell
         
@@ -72,14 +80,6 @@ def write_sheet(*, workbook, df, sheet_name, cols, scol, srow=None, row_col=None
             row_col str: optional value if specifying specific row numbers based on column with numbers in passed df 
                 if not given, will write to each row in order beginning with srow
                 if given, will use row number in that df col to determine where to write in excel sheet
-            formats list: list of tuples to apply in order to match against col names and apply format for first match encountered
-                works by matching string (first value in tuple) against col name and if the string is IN the col name, will apply that format
-                e.g.
-                    if formats = [('count',  '###,##0'), 
-                                  ('rate', '###,##0.00')]
-                       will apply format of '###,##0' to any col with 'count' in the name, then will apply format of '###,##0.00' to any col with 'rate' in the name
-            default_format str: default format to apply if no matches found in formats list
-            formats and default format are both optional - default is None
         
         returns:
             None (writes to worksheet)
@@ -99,8 +99,8 @@ def write_sheet(*, workbook, df, sheet_name, cols, scol, srow=None, row_col=None
     # loop over all cols to write to table
     
     column=scol
-    for col in cols:
+    for col_name in cols:
         
-        df[[row_col, col]].apply(lambda x: write_cell(*x, sheet = sheet, column = column), axis=1)
+        df[[row_col, col_name]].apply(lambda x: write_cell(*x, sheet = sheet, column = column, col_name = col_name), axis=1)
 
         column += 1

@@ -134,6 +134,24 @@ TABLE_MAPPINGS:
       - count
       - stat
 
+    t7:
+      sas_ds: state_duals2
+      sheet_num: A.7.
+      use_class: TableClassDuals
+      subset_col: full_dual
+      subset_value: ==1
+      numer_col: pop_sud
+      numer_value: ==1
+      count_cols: 
+        - dual_count
+        - dual_sud_count
+      numerator: dual_sud_count
+      denominators:
+        - pop_sud_tot_base
+        - dual_count
+      big_denom:
+        - pop_sud_tot_base
+
     t8:
       sas_ds: state_sud_set_srvc
       sheet_num: B.2.

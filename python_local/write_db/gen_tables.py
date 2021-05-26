@@ -1,7 +1,9 @@
 
 from .utils.params import SASDIR, TOTALS_DS
-from .classes.data_classes import BaseDataClass, TableClass, TableClassCountsOnly
-
+from .classes.BaseDataClass import BaseDataClass
+from .classes.TableClass import TableClass
+from .classes.TableClassCountsOnly import TableClassCountsOnly
+from .classes.TableClassDuals import TableClassDuals
 
 def gen_tables(*, year, version, workbook, table_details):
     """

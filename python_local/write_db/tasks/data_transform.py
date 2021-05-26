@@ -28,7 +28,7 @@ def calc_prop(num, denom, suppress_from_numer, suppress_value, prop_mult):
     except ZeroDivisionError:
         return np.nan
 
-def create_stats(*, df, numerators, denominators, prop_mult, suffix='_stat', suppress_from_numer=True, suppress_value='DS'):
+def create_stats(*, df, numerators, denominators, prop_mult, suffix='_stat', suppress_from_numer=True, suppress_value='DS', stat_name_use=0):
     """
     Function create_stats to create stats (num/denom multiplied by given value) based on passed numerator/denominator params
     params:
@@ -42,6 +42,9 @@ def create_stats(*, df, numerators, denominators, prop_mult, suffix='_stat', sup
         suffix str: suffix to add to numerator name to make stat, default = _stat
         suppress_from_numer bool: boolean to indicate whether calculated stat should be set suppressed value if numer is suppressed already, default = True
         suppress_value str: value indicating suppression, default = 'DS'
+        stat_name_use int: based on numerator/denominator pairs, indicates which to use to name the created stat (with specified suffix)
+            if 0, will use numerator (default)
+            if 0, will use denominator
 
     returns:
         df with stats added
@@ -55,7 +58,7 @@ def create_stats(*, df, numerators, denominators, prop_mult, suffix='_stat', sup
 
     for pair in zip(numerators, denominators):
 
-        df[f"{pair[0]}{suffix}"] = df[list(pair)].apply(lambda x: calc_prop(*x, suppress_from_numer, suppress_value, prop_mult), axis=1)
+        df[f"{pair[stat_name_use]}{suffix}"] = df[list(pair)].apply(lambda x: calc_prop(*x, suppress_from_numer, suppress_value, prop_mult), axis=1)
 
     return df
 
