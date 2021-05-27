@@ -5,12 +5,11 @@ from ..tasks.national_values import get_national_values
 from ..tasks.data_transform import convert_fips, create_stats, zero_fill_cond
 from ..tasks.small_cell_suppress import small_cell_suppress
 from ..tasks.write_excel import read_template_col, write_sheet
-from ..utils.text_funcs import stat_list, create_text_list, list_mapper, underscore_join
+from ..utils.text_funcs import stat_list, create_text_list
 from ..utils.df_funcs import list_dup_cols
 from ..utils.params import STATE_LIST
 
 
-        
 class TableClass(BaseDataClass):
     """
     TableClass to inherit from instance of BaseDataClass to get base attributes and totals df
@@ -26,7 +25,7 @@ class TableClass(BaseDataClass):
         Initialize with BaseDataClass instance and pass args, create attributes from all passed kwargs
 
         """
-        super(TableClass, self).__init__(*args)
+        super().__init__(*args)
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -50,26 +49,6 @@ class TableClass(BaseDataClass):
         if hasattr(self, 'group_cols'):
             self.join_cols = ['submtg_state_cd'] + self.group_cols
 
-        if self.gen_wide:
-
-            # set state and big denom as index cols to pass to wide_transform
-
-            self.index_cols = ['state'] + self.big_denom
-
-            if hasattr(self, 'sas_ds_numer'):
-                self.main_copies = {k : v for k,v in self.__dict__.items() if k  == 'denom'}
-                self.numer_copies = {k : v for k,v in self.__dict__.items() if k  == 'numer'}
-
-            else:
-                self.main_copies = {k : v for k,v in self.__dict__.items() if k in ['numer','denom']}
-
-                # if not using individual denoms, remove denom from dict/list
-
-                if self.indiv_denoms == False:
-                    self.main_copies.pop('denom', None)
-                    self.values_transpose.remove('denom')
-
-
         # create lists of count cols, all table cols
         # if group_order is given, must dynamically create list of numerators and denominators
 
@@ -91,67 +70,28 @@ class TableClass(BaseDataClass):
 
     def prep_for_tables(self):
         """
-        Method prep_for_tables to call class methods to create table df and pull sheet name from Excel template, and
+        Method prep_for_tables to call class methods to create initial and prepped dfs, and pull sheet name from Excel template, and
         assign to class attributes
 
         """
 
-        self.table_df = self.create_table_df()
+        self.init_df = self.create_init_df()
+        self.prepped_df = self.create_prepped_df(df = self.init_df)
+
         self.sheet_name = self.get_sheet_name()
 
-    def wide_transform(self, df):
+    def create_init_df(self):
         """
-        Function wide_transform to take input df from wide to long
-        params:
-            df: df with long values to transform to wide
-            index cols list: list of index col(s)
-
-        returns:
-            df: dataframe transposed long to wide
-
-        """
-
-        # if have individual denoms, get totals across index_cols and group_cols - assume must sum and join back on
-
-        if self.indiv_denoms == True:
-
-            grouped = df.groupby(self.index_cols + self.group_cols)
-            df['denom'] = grouped['denom'].transform(sum)
-
-        # if numer_col is given, must additional subset to numer_col to subset to numerator - otherwise take whole df
-
-        if 'numer_col' in self.__dict__.keys():
-
-            wide = df.loc[eval(f"df.{self.numer_col} {self.numer_value}")].pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
-
-        else:
-            wide = df.pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
-
-        # rename columns based on concatenation with underscore separator of current indices (tuples, which contain params passed above for "columns" and "values")
-
-        wide.columns = list_mapper(underscore_join, wide.columns)
-        
-        return wide.reset_index()
-
-
-    def create_table_df(self):
-        """
-        Method create_table_df to do the following:
+        Method create_init_df to do the following:
             - Read in specific SAS ds
                 - If additional param sas_ds_numer (SAS dataset with only numerators) was passed, must read in and join to base, creating numerator flag
             - Convert fips to name
             - Join to totals
-            - Fill denominators and conditionally fill numerators with 0s (only fill numer with 0 if denom > 0)
-            - Apply small cell suppression to all counts
-            - Get national sum of all counts
-            - Create percents, will be suppressed if numerator is already suppressed
-            - Fill all nan values with period
-
+            
         Returns:
-            df to be assigned to table_df
+            df to be assigned to init_df
         
         """
-
         df = self.read_sas(self.sas_ds, copies = self.main_copies)
 
         if hasattr(self, 'sas_ds_numer'):
@@ -165,13 +105,26 @@ class TableClass(BaseDataClass):
 
         df['state'] = convert_fips(df = df)
 
-        df = df.merge(self.totals_df.drop(columns=['submtg_state_cd']), left_on='state', right_on='state', how='outer')
+        return df.merge(self.totals_df.drop(columns=['submtg_state_cd']), left_on='state', right_on='state', how='outer')
 
-        if self.gen_wide == True:
+
+    def create_prepped_df(self, df):
+        """
+        Method create_prepped_df to do the following on input df to prep to write to tables:
             
-            # call wide_transform to read in long table, sum totals, and transform to get to wide format (one row per state)
+            - Fill denominators and conditionally fill numerators with 0s (only fill numer with 0 if denom > 0)
+            - Apply small cell suppression to all counts
+            - Get national sum of all counts
+            - Create percents, will be suppressed if numerator is already suppressed
+            - Fill all nan values with period
 
-            df = self.wide_transform(df)
+        params:
+            df: df to prep
+
+        Returns:
+            df to be assigned to prepped_df
+        
+        """
 
         df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
@@ -206,7 +159,7 @@ class TableClass(BaseDataClass):
 
     def write_excel_sheet(self):
         """
-        Method write_excel_sheet to write table df to excel sheet using state-order df extracted from sheet
+        Method write_excel_sheet to write self.prepped_df to excel sheet using state-order df extracted from sheet
         params:
             self
 
@@ -218,7 +171,7 @@ class TableClass(BaseDataClass):
 
         # join order_df to table df, assert all values of state in order_df
 
-        to_table = self.table_df.merge(order_df, left_on='state', right_on='state', how='outer', indicator = '_merged')
+        to_table = self.prepped_df.merge(order_df, left_on='state', right_on='state', how='outer', indicator = '_merged')
 
         assert set(to_table['_merged']) == set(['both']), f"ERROR: All values of state not on both template and table_df for {self.sheet_num} - FIX"
 

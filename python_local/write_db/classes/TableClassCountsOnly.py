@@ -8,7 +8,7 @@ from ..tasks.national_values import get_national_values
 
 class TableClassCountsOnly(TableClass):
     """
-    TableClassCountsOnly to inherit all attributes/methods from TableClass and overwrite main methods (minimal data prep needed for counts only)
+    TableClassCountsOnly to inherit all attributes/methods from TableClass and override main methods (minimal data prep needed for counts only)
 
     """
 

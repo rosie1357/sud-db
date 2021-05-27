@@ -42,7 +42,7 @@ TABLE_MAPPINGS:
   t3:
     sas_ds: state_elgblty_grp_sud
     sheet_num: A.3.
-    gen_wide: True
+    use_class: TableClassWideTransform
     group_cols: 
       - elgblty_grp_cat
     denom: count
@@ -67,7 +67,7 @@ TABLE_MAPPINGS:
   t4:
     sas_ds: state_elgblty_grp_sud
     sheet_num: A.4.
-    gen_wide: True
+    use_class: TableClassWideTransform
     group_cols: 
       - elgblty_grp_cat
     denom: count
@@ -93,7 +93,7 @@ TABLE_MAPPINGS:
     sas_ds_numer: 
       - state_disabled
     sheet_num: A.5.
-    gen_wide: True
+    use_class: TableClassWideTransform
     group_cols: 
       - agecat
       - disabled_yr
@@ -116,7 +116,7 @@ TABLE_MAPPINGS:
     t6:
     sas_ds: state_disabled
     sheet_num: A.6.
-    gen_wide: True
+    use_class: TableClassWideTransform
     group_cols: 
       - agecat
       - disabled_yr
