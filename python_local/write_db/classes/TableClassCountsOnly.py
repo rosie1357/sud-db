@@ -21,10 +21,20 @@ class TableClassCountsOnly(TableClass):
 
         self.excel_cols = self.count_cols
 
-
-    def create_table_df(self):
+    def prep_for_tables(self):
         """
-        Method create_table_df to override method from TableClass to do minimal prep on input sas DS
+        Method prep_for_tables to override parent class method to run processing specific to counts table
+
+        """
+
+        self.prepped_df = self.create_prepped_df() 
+
+        self.sheet_name = self.get_sheet_name()
+
+
+    def create_prepped_df(self):
+        """
+        Method create_prepped_df to override method from TableClass to do minimal prep on input sas DS
         Does the following steps:
 
             - Read in specific SAS ds

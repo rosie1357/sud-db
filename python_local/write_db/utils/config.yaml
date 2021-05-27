@@ -113,7 +113,7 @@ TABLE_MAPPINGS:
       - count
       - stat
 
-    t6:
+  t6:
     sas_ds: state_disabled
     sheet_num: A.6.
     use_class: TableClassWideTransform
@@ -134,47 +134,47 @@ TABLE_MAPPINGS:
       - count
       - stat
 
-    t7:
-      sas_ds: state_duals2
-      sheet_num: A.7.
-      use_class: TableClassDuals
-      subset_col: full_dual
-      subset_value: ==1
-      numer_col: pop_sud
-      numer_value: ==1
-      count_cols: 
-        - dual_count
-        - dual_sud_count
-      numerator: dual_sud_count
-      denominators:
-        - pop_sud_tot_base
-        - dual_count
-      big_denom:
-        - pop_sud_tot_base
+  t7:
+    sas_ds: state_duals2
+    sheet_num: A.7.
+    use_class: TableClassDuals
+    subset_col: full_dual
+    subset_value: ==1
+    numer_col: pop_sud
+    numer_value: ==1
+    count_cols: 
+      - dual_count
+      - dual_sud_count
+    numerator: dual_sud_count
+    denominators:
+      - pop_sud_tot_base
+      - dual_count
+    big_denom:
+      - pop_sud_tot_base
 
-    t8:
-      sas_ds: state_sud_set_srvc
-      sheet_num: B.2.
-      use_class: TableClassCountsOnly
-      count_cols: 
-        - trt_srvc_case_mgmt 
-        - trt_srvc_comm_sprt 
-        - trt_srvc_cnsltn 
-        - trt_srvc_cnsling 
-        - trt_srvc_detox 
-        - trt_srvc_emer_srvcs 
-        - trt_srvc_inpat 
-        - trt_srvc_intrvn 
-        - trt_srvc_mat 
-        - trt_srvc_med_mgmt
-        - trt_srvc_obs_care 
-        - trt_srvc_other 
-        - trt_srvc_part_hosp 
-        - trt_srvc_peer_sprt 
-        - trt_srvc_phys_srvcs 
-        - trt_srvc_rx 
-        - trt_srvc_scn_assmt 
-        - trt_srvc_treat
+  t8:
+    sas_ds: state_sud_set_srvc
+    sheet_num: B.2.
+    use_class: TableClassCountsOnly
+    count_cols: 
+      - trt_srvc_case_mgmt 
+      - trt_srvc_comm_sprt 
+      - trt_srvc_cnsltn 
+      - trt_srvc_cnsling 
+      - trt_srvc_detox 
+      - trt_srvc_emer_srvcs 
+      - trt_srvc_inpat 
+      - trt_srvc_intrvn 
+      - trt_srvc_mat 
+      - trt_srvc_med_mgmt
+      - trt_srvc_obs_care 
+      - trt_srvc_other 
+      - trt_srvc_part_hosp 
+      - trt_srvc_peer_sprt 
+      - trt_srvc_phys_srvcs 
+      - trt_srvc_rx 
+      - trt_srvc_scn_assmt 
+      - trt_srvc_treat
 
   t9:
     sas_ds: state_sud_set_srvc

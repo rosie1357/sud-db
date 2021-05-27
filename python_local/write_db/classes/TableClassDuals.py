@@ -40,10 +40,20 @@ class TableClassDuals(TableClass):
 
         return df.loc[eval(f"df.{self.numer_col} {self.numer_value}")].rename(columns = {'count' : self.count_cols[1]})
 
-
-    def create_table_df(self):
+    def prep_for_tables(self):
         """
-        Method create_table_df to override method from TableClass to do unique prep on DS:
+        Method prep_for_tables to override parent class method to run processing specific to duals table
+
+        """
+
+        self.prepped_df = self.create_prepped_df() 
+
+        self.sheet_name = self.get_sheet_name()
+
+
+    def create_prepped_df(self):
+        """
+        Method create_prepped_df to override method from TableClass to do unique prep on DS:
 
             - Read in specific SAS ds, make subsets to duals and create SUD numerator (using read_sas overriden for class)
             - Convert fips to name
