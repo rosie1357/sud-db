@@ -28,7 +28,6 @@ class BaseDataClass():
         # assign defaults that can be overwritten with table-specific params with creation of each TableClass
 
         self.scol = 2
-        self.gen_wide = False
         self.main_copies = {}
         self.numer_copies = {}
         self.numer_col_any = []
