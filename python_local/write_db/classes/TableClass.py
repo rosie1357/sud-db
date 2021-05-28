@@ -128,7 +128,7 @@ class TableClass(BaseDataClass):
 
         df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
-        df = small_cell_suppress(df = df, suppress_cols = self.count_cols).reset_index(drop=True)
+        df = small_cell_suppress(df = df, suppress_cols = self.count_cols, suppress_second = self.suppress_second).reset_index(drop=True)
 
         df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)], ignore_index=True)
 

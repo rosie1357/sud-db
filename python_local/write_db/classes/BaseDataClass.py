@@ -33,6 +33,7 @@ class BaseDataClass():
         self.numer_col_any = []
         self.values_transpose = ['numer','denom']
         self.prop_mult = 100
+        self.suppress_second = False
 
     def read_sas(self, filename, copies={}):
 
