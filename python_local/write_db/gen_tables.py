@@ -31,6 +31,11 @@ def gen_tables(*, year, version, workbook, table_details, config_sheet_num='shee
 
         if sheet_num:
 
+            # if running OUD tables and any parameters listed to override regular params, replace in kwargs
+
+            if table_type == 'OUD' and 'numerators_op' in kwargs.keys():
+                kwargs['numerators'] = kwargs['numerators_op']
+
             # identify class to use for given measure - TableClass is default
 
             use_class = kwargs.get('use_class', 'TableClass')
