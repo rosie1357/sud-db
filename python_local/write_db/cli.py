@@ -7,7 +7,7 @@ import argparse
 import openpyxl as xl
 from pathlib import Path
 
-from .utils.params import SPECDIR, SHELL, OUTDIR, OUTFILE
+from .utils.params import SPECDIR, SHELL, SHELL_OUD, OUTDIR, OUTFILE, OUTFILE_OUD
 from .utils.general_funcs import read_config, get_current_path
 from .gen_tables import gen_tables
 
@@ -30,17 +30,20 @@ def main(args=None):
     CONFIG = read_config(config_dir = get_current_path(sub_dirs = 'write_db/utils'))
     table_details = CONFIG['TABLE_MAPPINGS']
 
-    # open shell
+    # open shells (regular and OP/OUD)
 
-    workbook = xl.load_workbook(SPECDIR(YEAR) / SHELL)
+    #workbook = xl.load_workbook(SPECDIR(YEAR) / SHELL)
+    workbook_oud = xl.load_workbook(SPECDIR(YEAR) / SHELL_OUD)
 
-    # call gen_tables to do all processing
+    # call gen_tables to do all processing for both sets of tables (regular and OP/OUD)
 
-    gen_tables(year = YEAR, version = VERSION, workbook = workbook, table_details = table_details)
+    #gen_tables(year = YEAR, version = VERSION, workbook = workbook, table_details = table_details)
+    gen_tables(year = YEAR, version = VERSION, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD')
 
-    # save table
+    # save tables
 
-    workbook.save(OUTDIR(YEAR) / OUTFILE(YEAR))
+    #workbook.save(OUTDIR(YEAR) / OUTFILE(YEAR))
+    workbook_oud.save(OUTDIR(YEAR) / OUTFILE_OUD(YEAR))
 
 
 

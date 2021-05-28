@@ -4,7 +4,7 @@ TABLE_MAPPINGS:
 
   t1:
     sas_ds: state_sud_methods
-    sheet_num: A.1.
+    sheet_num_sud: A.1.
     numerators: 
       - pop_sud_tot
       - pop_sud_alchl_tot 
@@ -23,7 +23,7 @@ TABLE_MAPPINGS:
 
   t2:
     sas_ds: state_sud_methods
-    sheet_num: A.2.
+    sheet_num_sud: A.2.
     numerators: 
       - pop_sud_alchl_tot 
       - pop_sud_cnnbs_tot 
@@ -38,10 +38,18 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.1.
+    numerators_op:
+      - pop_sud_alchl_tot 
+      - pop_sud_cnnbs_tot
+      - pop_sud_plysbstnce_tot 
+      - pop_sud_stmlnts_tot 
+      - pop_sud_tbcco_tot 
+      - pop_sud_other_tot
 
   t3:
     sas_ds: state_elgblty_grp_sud
-    sheet_num: A.3.
+    sheet_num_sud: A.3.
     use_class: TableClassWideTransform
     group_cols: 
       - elgblty_grp_cat
@@ -63,10 +71,11 @@ TABLE_MAPPINGS:
       - denom
       - count
       - stat
+    sheet_num_op: D.3.
 
   t4:
     sas_ds: state_elgblty_grp_sud
-    sheet_num: A.4.
+    sheet_num_sud: A.4.
     use_class: TableClassWideTransform
     group_cols: 
       - elgblty_grp_cat
@@ -88,12 +97,13 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.2.
 
   t5:
     sas_ds: state_disabled2
     sas_ds_numer: 
       - state_disabled
-    sheet_num: A.5.
+    sheet_num_sud: A.5.
     use_class: TableClassWideTransform
     group_cols: 
       - agecat
@@ -113,10 +123,11 @@ TABLE_MAPPINGS:
       - denom
       - count
       - stat
+    sheet_num_op: D.4.
 
   t6:
     sas_ds: state_disabled
-    sheet_num: A.6.
+    sheet_num_sud: A.6.
     use_class: TableClassWideTransform
     group_cols: 
       - agecat
@@ -135,10 +146,11 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.5.
 
   t7:
     sas_ds: state_duals2
-    sheet_num: A.7.
+    sheet_num_sud: A.7.
     use_class: TableClassDuals
     subset_col: full_dual
     subset_value: ==1
@@ -156,7 +168,7 @@ TABLE_MAPPINGS:
 
   t8:
     sas_ds: state_sud_set_srvc
-    sheet_num: B.2.
+    sheet_num_sud: B.2.
     use_class: TableClassCountsOnly
     count_cols: 
       - trt_srvc_case_mgmt 
@@ -177,10 +189,11 @@ TABLE_MAPPINGS:
       - trt_srvc_rx 
       - trt_srvc_scn_assmt 
       - trt_srvc_treat
+    sheet_num_op: D.6.
 
   t9:
     sas_ds: state_sud_set_srvc
-    sheet_num: C.1.
+    sheet_num_sud: C.1.
     numerators: 
       - trt_srvc_case_mgmt 
       - trt_srvc_comm_sprt 
@@ -206,10 +219,11 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.7.
 
   t10:
     sas_ds: state_sud_set_srvc
-    sheet_num: C.2.
+    sheet_num_sud: C.2.
     numerators: 
       - inpatient
       - outpatient
@@ -223,10 +237,11 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.8.
 
   t11:
     sas_ds: state_sud_set_srvc
-    sheet_num: D.1.
+    sheet_num_sud: D.1.
     group_cols: []
     sas_ds_numer: 
       - stdy_inpat
@@ -265,10 +280,11 @@ TABLE_MAPPINGS:
       - denom
       - count
       - stat
+    sheet_num_op: D.9.
 
   t12:
     sas_ds: state_sud_methods
-    sheet_num: E.1.
+    sheet_num_sud: E.1.
     group_cols: []
     sas_ds_numer: 
       - state_sud_bene_mc
@@ -285,10 +301,11 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.10.
 
   t13:
     sas_ds: state_sud_dates_30
-    sheet_num: F.1.
+    sheet_num_sud: F.1.
     numerators: 
       - any_service30
       - mult_service30
@@ -298,3 +315,4 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    sheet_num_op: D.11.

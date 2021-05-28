@@ -2,6 +2,7 @@ import pandas as pd
 
 from ..tasks.data_transform import convert_fips
 from ..tasks.small_cell_suppress import small_cell_suppress
+from ..utils.decorators import add_op_suffix
 
 
 class BaseDataClass():
@@ -19,9 +20,9 @@ class BaseDataClass():
 
     """
     
-    def __init__(self, year, sas_dir, totals_ds, workbook):
+    def __init__(self, year, sas_dir, totals_ds, table_type, workbook):
 
-        self.year, self.sas_dir, self.totals_ds, self.workbook = year, sas_dir, totals_ds, workbook
+        self.year, self.sas_dir, self.totals_ds, self.table_type, self.workbook = year, sas_dir, totals_ds, table_type, workbook
         
         self.totals_df = self.prep_totals(tot_cols = ['pop_tot','pop_sud_tot'])
         
@@ -35,12 +36,15 @@ class BaseDataClass():
         self.prop_mult = 100
         self.suppress_second = False
 
-    def read_sas(self, filename, copies={}):
+    @add_op_suffix
+    def read_sas_data(self, filename=None, **kwargs):
 
         df = pd.read_sas(self.sas_dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1')
 
-        for copy, orig in copies.items():
-            df[copy] = df[orig]
+        if 'copies' in kwargs.keys():
+
+            for copy, orig in kwargs['copies'].items():
+                df[copy] = df[orig]
 
         # if numer_col_any is set, must do the following for any cols in numer_col_any that are also in df cols:
         #   - subset to col == 1
@@ -58,8 +62,10 @@ class BaseDataClass():
         Method prep_totals to read in base file, apply small cell suppression, and create state totals for overall pop counts
         Rename totals to have _base suffix to avoid same named columns if joining to same ds
         """
+
+        df = self.read_sas_data(filename=self.totals_ds)
         
-        df = self.read_sas(self.totals_ds)[['submtg_state_cd'] + tot_cols]
+        df = self.read_sas_data(filename=self.totals_ds)[['submtg_state_cd'] + tot_cols]
 
         df['state'] = convert_fips(df=df)
 

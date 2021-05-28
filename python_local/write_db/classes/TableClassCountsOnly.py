@@ -47,7 +47,7 @@ class TableClassCountsOnly(TableClass):
         
         """
 
-        df = self.read_sas(self.sas_ds)
+        df = self.read_sas_data(filename=self.sas_ds)
 
         df['state'] = convert_fips(df = df)
 

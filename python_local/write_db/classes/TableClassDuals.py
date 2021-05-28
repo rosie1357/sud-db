@@ -4,6 +4,7 @@ from .TableClass import TableClass
 from ..tasks.data_transform import convert_fips, zero_fill_cond, create_stats
 from ..tasks.national_values import get_national_values
 from ..tasks.small_cell_suppress import small_cell_suppress
+from ..utils.decorators import add_op_suffix
 
 
 class TableClassDuals(TableClass):
@@ -23,6 +24,7 @@ class TableClassDuals(TableClass):
 
         self.group_cols = ['submtg_state_cd']
 
+    @add_op_suffix
     def read_sas_duals(self, filename):
         """
         Method read_sas_duals to do the following (modified version of read_sas):

@@ -92,11 +92,11 @@ class TableClass(BaseDataClass):
             df to be assigned to init_df
         
         """
-        df = self.read_sas(self.sas_ds, copies = self.main_copies)
+        df = self.read_sas_data(filename = self.sas_ds, copies = self.main_copies)
 
         if hasattr(self, 'sas_ds_numer'):
             for sas_ds in self.sas_ds_numer:
-                df = df.merge(self.read_sas(sas_ds, copies=self.numer_copies),
+                df = df.merge(self.read_sas_data(filename=sas_ds, copies=self.numer_copies),
                      left_on=self.join_cols, right_on=self.join_cols, how='outer')
 
             # drop any dup columns (non-needed columns that joined on with multiple ds merges) - these cause concat to error

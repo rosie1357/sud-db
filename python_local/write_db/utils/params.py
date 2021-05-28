@@ -37,8 +37,9 @@ LOGDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\logs')
 # file names
 
 SHELL = 'SUD DB Tables.xlsx'
-OUTFILE = lambda year: f"SUD DB Tables ({year}) - {DATE_NOW}.xlsx"
+SHELL_OUD = 'SUD DB Tables_OUD.xlsx'
 
-LOGNAME = lambda year: f"sud_db_tables_{year}_{TIME_NOW}.log"
+OUTFILE = lambda year: f"SUD DB Tables ({year}) - {DATE_NOW}.xlsx"
+OUTFILE_OUD = lambda year: f"SUD DB Tables (OUD) ({year}) - {DATE_NOW}.xlsx"
 
 TOTALS_DS = 'state_sud_methods'
