@@ -34,9 +34,14 @@ def gen_tables(*, year, version, workbook, table_details, config_sheet_num, tabl
 
             use_class = kwargs.get('use_class', 'TableClass')
 
+            # extract optional list of DS names to hard-code use of SUD counts (i.e. for OUD tables, will not append _op suffix to get full population counts)
+            # must extract here to pass as arg to create BaseDataClass
+
+            use_sud_ds = kwargs.pop('use_sud_ds', [])
+
             # create table class, set initial attributes, add sheet_num to pass with kwargs to set class attributes
 
-            _tableclass = eval(use_class)(year, SASDIR(year), TOTALS_DS, table_type, workbook, **dict(kwargs, sheet_num=sheet_num))
+            _tableclass = eval(use_class)(year, SASDIR(year), TOTALS_DS, table_type, workbook, use_sud_ds, **dict(kwargs, sheet_num=sheet_num))
 
             _tableclass.set_initial_attribs()
 

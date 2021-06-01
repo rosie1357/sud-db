@@ -16,15 +16,19 @@ class BaseDataClass():
         sas_dir Path: path to sas datasets
         totals_ds str: name of SAS dataset with totals
         workbook excel obj: template to write to
+        use_sud_ds list: list of any SAS datasets read in for given table that should use SUD only (do not append _op suffix)
 
 
     """
     
-    def __init__(self, year, sas_dir, totals_ds, table_type, workbook):
+    def __init__(self, year, sas_dir, totals_ds, table_type, workbook, use_sud_ds):
 
-        self.year, self.sas_dir, self.totals_ds, self.table_type, self.workbook = year, sas_dir, totals_ds, table_type, workbook
-        
-        self.totals_df = self.prep_totals(tot_cols = ['pop_tot','pop_sud_tot'])
+        self.year = year 
+        self.sas_dir = sas_dir
+        self.totals_ds = totals_ds 
+        self.table_type = table_type 
+        self.workbook = workbook
+        self.use_sud_ds = use_sud_ds
         
         # assign defaults that can be overwritten with table-specific params with creation of each TableClass
 
@@ -35,6 +39,10 @@ class BaseDataClass():
         self.values_transpose = ['numer','denom']
         self.prop_mult = 100
         self.suppress_second = False
+
+        # read in totals df to use in all with each creation of TableClass
+
+        self.totals_df = self.prep_totals(tot_cols = ['pop_tot','pop_sud_tot'])
 
     @add_op_suffix
     def read_sas_data(self, filename=None, **kwargs):
@@ -62,8 +70,6 @@ class BaseDataClass():
         Method prep_totals to read in base file, apply small cell suppression, and create state totals for overall pop counts
         Rename totals to have _base suffix to avoid same named columns if joining to same ds
         """
-
-        df = self.read_sas_data(filename=self.totals_ds)
         
         df = self.read_sas_data(filename=self.totals_ds)[['submtg_state_cd'] + tot_cols]
 
