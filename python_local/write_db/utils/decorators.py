@@ -1,6 +1,6 @@
 def add_op_suffix(func):
     """
-    Decorator add_op_suffix to decorate read_sas_data methods in table classes to add _op suffix to all input filenames if table is OUD,
+    Decorator add_op_suffix to decorate read_sas_data methods in table classes to add _op suffix to all input filenames if table type is OUD,
     otherwise just use given filename
 
     """

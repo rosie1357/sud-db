@@ -1,5 +1,5 @@
 import pandas as pd
-from collections import OrderedDict
+import openpyxl as xl
 
 def read_template_col(*, workbook, sheet_name, state_list, col = 'A', state_col_name = 'state', strip_chars=[]):
     """
@@ -58,6 +58,7 @@ def write_cell(row_col, col_value, sheet, column, col_name):
 
     cellref = sheet.cell(row=row_col, column=column)
     cellref.value = col_value
+    cellref.alignment = xl.styles.Alignment(horizontal='center')
 
     if col_name.endswith('_stat'):
         cellref.number_format = '###,##0.0'
@@ -89,7 +90,7 @@ def write_sheet(*, workbook, df, sheet_name, cols, scol, srow=None, row_col=None
     workbook.active = workbook.sheetnames.index(sheet_name)
     sheet = workbook.active
 
-    # if srow is given, create temp row_num col to pass to write_cell to determine row to write to
+    # if srow is given, must create temp row_num col to pass to write_cell to determine row to write to
 
     if srow:
         row_col = 'row_num'

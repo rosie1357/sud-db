@@ -71,7 +71,7 @@ class TableClassDuals(TableClass):
         
         """
 
-        df = self.read_sas_duals(self.sas_ds)
+        df = self.read_sas_duals(filename=self.sas_ds)
 
         df['state'] = convert_fips(df = df)
 

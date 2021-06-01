@@ -38,7 +38,7 @@ def main(args=None):
     # call gen_tables to do all processing for both sets of tables (regular and OP/OUD)
 
     gen_tables(year = YEAR, version = VERSION, workbook = workbook, table_details = table_details)
-    gen_tables(year = YEAR, version = VERSION, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_oud', table_type='OUD')
+    gen_tables(year = YEAR, version = VERSION, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD')
 
     # save tables
 
