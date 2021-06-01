@@ -38,14 +38,23 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+
+  t2_oud:
+    sas_ds: state_sud_methods
     sheet_num_op: D.1.
-    numerators_op:
+    numerators: 
       - pop_sud_alchl_tot 
       - pop_sud_cnnbs_tot
       - pop_sud_plysbstnce_tot 
       - pop_sud_stmlnts_tot 
       - pop_sud_tbcco_tot 
-      - pop_sud_other_tot
+      - pop_sud_other_tot 
+    big_denom:
+      - pop_sud_tot_base
+    excel_order:
+      - big_denom
+      - count
+      - stat
 
   t3:
     sas_ds: state_elgblty_grp_sud
@@ -71,7 +80,31 @@ TABLE_MAPPINGS:
       - denom
       - count
       - stat
+
+  t3_oud:
+    sas_ds: state_elgblty_grp_sud
     sheet_num_op: D.3.
+    use_class: TableClassWideTransform
+    group_cols: 
+      - elgblty_grp_cat
+    denom: count
+    numer: count
+    numer_col: pop_sud
+    numer_value: ==1
+    group_order: 
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 0
+    big_denom:
+      - pop_tot_base
+    excel_order:
+      - big_denom
+      - denom
+      - count
+      - stat
 
   t4:
     sas_ds: state_elgblty_grp_sud

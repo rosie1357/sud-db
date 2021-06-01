@@ -6,7 +6,7 @@ from .classes.TableClassWideTransform import TableClassWideTransform
 from .classes.TableClassCountsOnly import TableClassCountsOnly
 from .classes.TableClassDuals import TableClassDuals
 
-def gen_tables(*, year, version, workbook, table_details, config_sheet_num='sheet_num_sud', table_type='SUD'):
+def gen_tables(*, year, version, workbook, table_details, config_sheet_num, table_type):
     """
     Function gen_tables to generate excel tables
     params:
@@ -14,27 +14,21 @@ def gen_tables(*, year, version, workbook, table_details, config_sheet_num='shee
         version str: version of TAF
         workbook excel obj: template to write to
         table_details dict: dictionary with one table per key with details to write table
-        table_type str: table to write, default is SUD. For OUD set to OUD
-        config_sheet_num str: name of sheet num param in config  to pull for given table, default is sheet_num_sud
-            for OUD tables = sheet_num_op
+        table_type str: table to write (SUD or OUD)
+        config_sheet_num str: name of sheet num param in config to pull for given table (sheet_num_sud or sheet_num_op)
 
     """
 
     # loop over all tables in table_details to create regular TableClass (default) or child class if specified
-    # only run for OUD tables if sheet_num_op in kwargs
+    # only run if specific config_sheet_num given in kwargs (not all tables run for OUD, and some few tables specified separately for SUD/OUD)
 
     for table, kwargs in table_details.items():
 
         sheet_num = kwargs.get(config_sheet_num, None)
 
-        # only write table if sheet num given in config (do not write every sheet for OUD)
+        # only write table if sheet num for table type given in config
 
         if sheet_num:
-
-            # if running OUD tables and any parameters listed to override regular params, replace in kwargs
-
-            if table_type == 'OUD' and 'numerators_op' in kwargs.keys():
-                kwargs['numerators'] = kwargs['numerators_op']
 
             # identify class to use for given measure - TableClass is default
 
