@@ -53,3 +53,42 @@ def small_cell_suppress(*, df, suppress_cols, suppress_value='DS', min_max=(0,11
         df[suppress_cols] = df[suppress_cols].apply(suppress_second_lowest, suppress_value=suppress_value, axis=1)
 
     return df
+
+def match_suppress(num, denom, suppress_value):
+    """
+    Function match_suppress to be applied row wise to num and denom and return suppress_value if denom = suppress_value
+    params:
+        num/denom to come from row passed as series
+        suppress_value str: value indicating suppression
+
+    returns:
+        suppress_value or original num value
+
+    """
+
+    if denom == suppress_value:
+        return suppress_value
+
+    else:
+        return num
+
+
+def suppress_match_numer(*, df, numerators, denominators, suppress_value='DS'):
+    """
+    Function suppress_match_numer to loop over pairs of numers and denoms and return suppressed value of numer if denom is suppressed
+    params:
+        df: df to read/write
+        numerators list: list of numerator cols
+        denominators list: list of denominator cols
+        suppress_value str: value indicating suppression, default is DS
+
+    returns:
+        df
+
+    """
+
+    for pair in zip(numerators, denominators):
+
+        df[pair[0]] = df[list(pair)].apply(lambda x: match_suppress(*x, suppress_value), axis=1)
+
+    return df

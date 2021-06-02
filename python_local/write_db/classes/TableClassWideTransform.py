@@ -67,14 +67,20 @@ class TableClassWideTransform(TableClass):
             grouped = df.groupby(self.index_cols + self.group_cols)
             df['denom'] = grouped['denom'].transform(sum)
 
-        # if numer_col is given, must additional subset to numer_col to subset to numerator - otherwise take whole df
+        # if numer_col is given, must create base df with deduplicated recs and separate num df with num counts only, and join together before transposing
 
         if 'numer_col' in self.__dict__.keys():
 
-            wide = df.loc[eval(f"df.{self.numer_col} {self.numer_value}")].pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
+            join_cols = self.index_cols + self.group_cols
 
-        else:
-            wide = df.pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
+            base_df = df[join_cols + [col for col in self.values_transpose if col != 'numer']].drop_duplicates()
+            num_df = df.loc[eval(f"df.{self.numer_col} {self.numer_value}")]
+
+            df = base_df.merge(num_df[self.index_cols + self.group_cols + ['numer']], left_on=join_cols, right_on=join_cols, how='left').fillna(0)
+
+            #wide = df.loc[eval(f"df.{self.numer_col} {self.numer_value}")].pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
+
+        wide = df.pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
 
         # rename columns based on concatenation with underscore separator of current indices (tuples, which contain params passed above for "columns" and "values")
 

@@ -3,7 +3,7 @@ import pandas as pd
 from .BaseDataClass import BaseDataClass
 from ..tasks.national_values import get_national_values
 from ..tasks.data_transform import convert_fips, create_stats, zero_fill_cond
-from ..tasks.small_cell_suppress import small_cell_suppress
+from ..tasks.small_cell_suppress import small_cell_suppress, suppress_match_numer
 from ..tasks.write_excel import read_template_col, write_sheet
 from ..utils.text_funcs import stat_list, create_text_list
 from ..utils.df_funcs import list_dup_cols
@@ -113,7 +113,8 @@ class TableClass(BaseDataClass):
         Method create_prepped_df to do the following on input df to prep to write to tables:
             
             - Fill denominators and conditionally fill numerators with 0s (only fill numer with 0 if denom > 0)
-            - Apply small cell suppression to all counts
+            - Apply small cell suppression to all counts (numerators and denominators separately)
+                - if have indiv_denoms, must then loop over each pair of num/denom and suppress num if denom is suppressed based on second lowest suppression
             - Get national sum of all counts
             - Create percents, will be suppressed if numerator is already suppressed
             - Fill all nan values with period
@@ -128,7 +129,13 @@ class TableClass(BaseDataClass):
 
         df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
-        df = small_cell_suppress(df = df, suppress_cols = self.count_cols, suppress_second = self.suppress_second).reset_index(drop=True)
+        for suppress_cols in [self.numerators, self.denominators]:
+
+            df = small_cell_suppress(df = df, suppress_cols = suppress_cols, suppress_second = self.suppress_second).reset_index(drop=True)
+
+        if self.indiv_denoms:
+
+            df = suppress_match_numer(df = df, numerators = self.numerators, denominators = self.denominators)
 
         df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)], ignore_index=True)
 

@@ -66,6 +66,7 @@ TABLE_MAPPINGS:
     numer: count
     numer_col: pop_sud
     numer_value: ==1
+    suppress_second: True
     group_order: 
       - 1
       - 2
@@ -94,6 +95,7 @@ TABLE_MAPPINGS:
       - elgblty_grp_cat
     denom: count
     numer: count
+    suppress_second: True
     group_order: 
       - 1
       - 2
