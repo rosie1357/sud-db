@@ -8,7 +8,7 @@ import openpyxl as xl
 from pathlib import Path
 
 from .utils.params import SPECDIR, SHELL, SHELL_OUD, OUTDIR, OUTFILE, OUTFILE_OUD
-from .utils.general_funcs import read_config, get_current_path
+from .utils.general_funcs import variable_matcher, variable_constructor, read_config, get_current_path
 from .gen_tables import gen_tables
 
 def main(args=None):
@@ -27,7 +27,8 @@ def main(args=None):
 
     # read in measures config file to get dictionary with details to run each table
 
-    CONFIG = read_config(config_dir = get_current_path(sub_dirs = 'write_db/utils'))
+    CONFIG = read_config(config_dir = get_current_path(sub_dirs = 'write_db/utils'), variable_match = {'matcher' : variable_matcher, 'constructor' : variable_constructor})
+
     table_details = CONFIG['TABLE_MAPPINGS']
 
     # open shells (regular and OP/OUD)

@@ -88,7 +88,7 @@ TABLE_MAPPINGS:
     sheet_num_op: D.3.
     use_class: TableClassWideTransform
     use_sud_ds:
-      - state_sud_methods
+      - ${TOTALS_DS}
       - state_elgblty_grp_sud
     group_cols: 
       - elgblty_grp_cat
@@ -167,7 +167,7 @@ TABLE_MAPPINGS:
     sheet_num_op: D.4.
     use_class: TableClassWideTransform
     use_sud_ds:
-      - state_sud_methods
+      - ${TOTALS_DS}
       - state_disabled2
     group_cols: 
       - agecat
