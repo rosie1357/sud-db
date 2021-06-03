@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from ..utils.params import FIPS_NAME_MAP
+from common.utils.params import FIPS_NAME_MAP
 
 def convert_fips(*, df, incol='submtg_state_cd'):
 

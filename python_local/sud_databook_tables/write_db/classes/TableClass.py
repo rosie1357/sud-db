@@ -5,9 +5,9 @@ from ..tasks.national_values import get_national_values
 from ..tasks.data_transform import convert_fips, create_stats, zero_fill_cond
 from ..tasks.small_cell_suppress import small_cell_suppress, suppress_match_numer
 from ..tasks.write_excel import read_template_col, write_sheet
-from ..utils.text_funcs import stat_list, create_text_list
-from ..utils.df_funcs import list_dup_cols
-from ..utils.params import STATE_LIST
+from common.utils.text_funcs import stat_list, create_text_list
+from common.utils.df_funcs import list_dup_cols
+from common.utils.params import STATE_LIST
 
 
 class TableClass(BaseDataClass):

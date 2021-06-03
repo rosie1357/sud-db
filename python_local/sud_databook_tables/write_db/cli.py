@@ -7,8 +7,8 @@ import argparse
 import openpyxl as xl
 from pathlib import Path
 
-from .utils.params import SPECDIR, SHELL, SHELL_OUD, OUTDIR, OUTFILE, OUTFILE_OUD
-from .utils.general_funcs import variable_matcher, variable_constructor, read_config, get_current_path
+from common.utils.params import SPECDIR, SHELL, SHELL_OUD, OUTDIR, OUTFILE, OUTFILE_OUD
+from common.utils.general_funcs import variable_matcher, variable_constructor, read_config, get_current_path
 from .gen_tables import gen_tables
 
 def main(args=None):
@@ -20,14 +20,16 @@ def main(args=None):
     parser.add_argument('--year', required=True)
     parser.add_argument('--version', required=True)
 
-    # extract arguments from parser
+    print('blah')
 
+    # extract arguments from parser
+    
     args = parser.parse_args()
     YEAR, VERSION = args.year,  args.version
 
     # read in measures config file to get dictionary with details to run each table
 
-    CONFIG = read_config(config_dir = get_current_path(sub_dirs = 'write_db/utils'), variable_match = {'matcher' : variable_matcher, 'constructor' : variable_constructor})
+    CONFIG = read_config(config_dir = get_current_path(sub_dirs = 'sud_databook_tables/write_db/config'), variable_match = {'matcher' : variable_matcher, 'constructor' : variable_constructor})
 
     table_details = CONFIG['TABLE_MAPPINGS']
 
@@ -45,7 +47,3 @@ def main(args=None):
 
     workbook.save(OUTDIR(YEAR) / OUTFILE(YEAR))
     workbook_oud.save(OUTDIR(YEAR) / OUTFILE_OUD(YEAR))
-
-
-
-    

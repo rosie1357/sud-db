@@ -1,10 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='sud_db_tables',
+    name='sud_databook_tables',
     version='0.1.0',
-    description='Package to write SUD db tables',
-    packages=find_packages(),
+    description='Package to create SUD databook tables',
+    packages=find_packages("sud_databook_tables"), 
+    package_dir={"": "sud_databook_tables"},
     author='Rosalie Malsberger', 
     author_email='rmalsberger@mathematica-mpr.com',
     license='Mathematica',

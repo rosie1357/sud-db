@@ -9,7 +9,7 @@ import os
 import re
 from pathlib import Path
 
-from .params import TOTALS_DS
+from common.utils.params import TOTALS_DS
 
 # define variable_matcher to be passed to yaml.add_implicit_resolver to match pattern of ${} in yaml load to
 # identify variables to resolve
@@ -72,20 +72,6 @@ def get_current_path(sub_dirs = ''):
     """
 
     return Path(os.getcwd()) / sub_dirs
-
-def func_name(func=None):
-    """
-    Function func_name to decorate functions to return internal name while in function    
-    
-    """
-    def wrapper(*args, **kwargs):
-        try:
-            function_name = func.__func__.__qualname__
-        except:
-            function_name = func.__qualname__
-        return func(*args, **kwargs, function_name=function_name)
-    return wrapper
-
 
 def print_to_log(*, message, records, print_index=False):
     """

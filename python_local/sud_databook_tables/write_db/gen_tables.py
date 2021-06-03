@@ -1,5 +1,5 @@
 
-from .utils.params import SASDIR, TOTALS_DS
+from common.utils.params import SASDIR, TOTALS_DS
 from .classes.BaseDataClass import BaseDataClass
 from .classes.TableClass import TableClass
 from .classes.TableClassWideTransform import TableClassWideTransform

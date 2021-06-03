@@ -4,7 +4,7 @@ from .TableClass import TableClass
 from ..tasks.data_transform import convert_fips, zero_fill_cond, create_stats
 from ..tasks.national_values import get_national_values
 from ..tasks.small_cell_suppress import small_cell_suppress
-from ..utils.decorators import add_op_suffix
+from common.utils.decorators import add_op_suffix
 
 
 class TableClassDuals(TableClass):
