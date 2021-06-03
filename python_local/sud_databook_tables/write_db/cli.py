@@ -20,8 +20,6 @@ def main(args=None):
     parser.add_argument('--year', required=True)
     parser.add_argument('--version', required=True)
 
-    print('blah')
-
     # extract arguments from parser
     
     args = parser.parse_args()
