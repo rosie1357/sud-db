@@ -79,7 +79,7 @@ class TableClassDuals(TableClass):
 
         df = zero_fill_cond(df = df, base_cols = [self.count_cols[0]], cond_cols = [self.count_cols[1]])
 
-        df = small_cell_suppress(df = df, suppress_cols = self.count_cols).reset_index(drop=True)
+        df = small_cell_suppress(df, self.count_cols).reset_index(drop=True)
 
         df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols + self.big_denom, op='sum').reset_index(drop=True)], ignore_index=True)
 

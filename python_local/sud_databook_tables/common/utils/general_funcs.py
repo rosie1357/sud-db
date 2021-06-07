@@ -73,11 +73,12 @@ def get_current_path(sub_dirs = ''):
 
     return Path(os.getcwd()) / sub_dirs
 
-def print_to_log(*, message, records, print_index=False):
+def print_to_log(*, log, message, records, print_index=False):
     """
     Function print_to_log to print message and input df to log
     
     params:
+        log logger: log to write to
         message str: message to print
         records df: df to print after message (will print all input records/columns)  
         print_index boolean: boolean to write index when printing df - default is False (does not print index)
@@ -87,8 +88,8 @@ def print_to_log(*, message, records, print_index=False):
     
     """
     
-    logging.info(f"\n{message}:\n")
-    logging.info(f"{records.to_string(index=print_index)}") 
+    log.info(f"\n{message}:\n")
+    log.info(f"{records.to_string(index=print_index)}") 
     
     
 def crosstab(*, df, groupcols):

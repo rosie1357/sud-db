@@ -75,6 +75,6 @@ class BaseDataClass():
 
         df['state'] = convert_fips(df=df)
 
-        df = small_cell_suppress(df = df, suppress_cols = tot_cols)
+        df = small_cell_suppress(df, tot_cols)
 
         return df.rename(columns = {f"{col}" : f"{col}_base" for col in tot_cols})

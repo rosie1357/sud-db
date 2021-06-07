@@ -30,30 +30,6 @@ def suppress_second_lowest(row, suppress_value):
     
     return row
 
-
-def small_cell_suppress(*, df, suppress_cols, suppress_value='DS', min_max=(0,11), suppress_second = False):
-    """
-    Function small_cell_suppress to set all values of given columns within given range to given suppressed value.
-
-    params:
-        df df: pandas df
-        suppress_cols list: list of col(s) to evaluate value and suppress
-        suppress_value [str, int, float] value to use if suppressing, default = 'DS'
-        min_max tuple: tuple with range of min/max values to identify for suppression, will identify EXCLUSIVE of range, default = (0,11)
-        suppress_second bool: boolean to indicate must suppress SECOND lowest value if only one value within row suppressed, default = False (do not suppress second lowest)
-
-    returns:
-        df with suppression applied
-
-    """
-
-    df[suppress_cols] = df[suppress_cols].applymap(lambda x: suppress_value if (x > min_max[0]) & (x < min_max[1]) else x)
-
-    if suppress_second:
-        df[suppress_cols] = df[suppress_cols].apply(suppress_second_lowest, suppress_value=suppress_value, axis=1)
-
-    return df
-
 def match_suppress(num, denom, suppress_value):
     """
     Function match_suppress to be applied row wise to num and denom and return suppress_value if denom = suppress_value
@@ -90,5 +66,47 @@ def suppress_match_numer(*, df, numerators, denominators, suppress_value='DS'):
     for pair in zip(numerators, denominators):
 
         df[pair[0]] = df[list(pair)].apply(lambda x: match_suppress(*x, suppress_value), axis=1)
+
+    return df
+
+
+def small_cell_suppress(df, *args, suppress_value='DS', min_max=(0,11), suppress_second = False, match_numer = False):
+    """
+    Function small_cell_suppress to set all values of given columns within given range to given suppressed value.
+
+    params:
+        df df: pandas df
+        *args: lists of columns to suppress. If passing a set of numerators and denominators, and match_numer == True, must pass numerators as first arg and denominators as second
+        suppress_value [str, int, float] value to use if suppressing, default = 'DS'
+        min_max tuple: tuple with range of min/max values to identify for suppression, will identify EXCLUSIVE of range, default = (0,11)
+        suppress_second bool: boolean to indicate must suppress SECOND lowest value if only one value within row suppressed, default = False (do not suppress second lowest)
+        match_numer bool:
+
+    returns:
+        df with suppression applied
+
+    """
+
+    # loop through all suppress col lists to suppress each col individually
+
+    for suppress_cols in args:
+
+        df[suppress_cols] = df[suppress_cols].applymap(lambda x: suppress_value if (x > min_max[0]) & (x < min_max[1]) else x)
+
+    # if match_numer, must suppress number if denom is suppressed BEFORE suppressing second lowest (if requested)
+
+    if match_numer:
+
+        df = suppress_match_numer(df = df, numerators = args[0], denominators = args[1])
+
+    # if suppressing second, must suppress denoms first, match numer again, and THEN suppress second for numerator
+
+    if suppress_second:
+
+        df[args[1]] = df[args[1]].apply(suppress_second_lowest, suppress_value=suppress_value, axis=1)
+
+        df = suppress_match_numer(df = df, numerators = args[0], denominators = args[1])
+
+        df[args[0]] = df[args[0]].apply(suppress_second_lowest, suppress_value=suppress_value, axis=1)
 
     return df

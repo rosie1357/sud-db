@@ -129,13 +129,8 @@ class TableClass(BaseDataClass):
 
         df = zero_fill_cond(df = df, base_cols = self.denominators, cond_cols = self.numerators)
 
-        for suppress_cols in [self.numerators, self.denominators]:
-
-            df = small_cell_suppress(df = df, suppress_cols = suppress_cols, suppress_second = self.suppress_second).reset_index(drop=True)
-
-        if self.indiv_denoms:
-
-            df = suppress_match_numer(df = df, numerators = self.numerators, denominators = self.denominators)
+        df = small_cell_suppress(df, self.numerators, self.denominators,
+                                 suppress_second = self.suppress_second, match_numer = self.indiv_denoms).reset_index(drop=True)
 
         df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)], ignore_index=True)
 

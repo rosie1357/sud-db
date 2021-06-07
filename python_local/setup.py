@@ -12,6 +12,7 @@ setup(
     entry_points={
         'console_scripts': [
             'write_db_tables  = write_db.cli:main',
+            'compare_versions = compare_versions.compare_versions:main'
         ],
     },
 )
