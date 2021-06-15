@@ -86,7 +86,7 @@ TABLE_MAPPINGS:
     sas_ds: state_elgblty_grp_sud
     sas_ds_numer: 
       - state_sud_elgblty_grp
-    sheet_num_op: D.3.
+    sheet_num_op: D.2.
     use_class: TableClassWideTransform
     use_sud_ds:
       - ${TOTALS_DS}
@@ -135,7 +135,7 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
-    sheet_num_op: D.2.
+    sheet_num_op: D.3.
 
   t5:
     sas_ds: state_disabled2
