@@ -18,12 +18,10 @@ def main(args=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--year', required=True)
-    parser.add_argument('--version', required=True)
 
     # extract arguments from parser
     
-    args = parser.parse_args()
-    YEAR, VERSION = args.year,  args.version
+    YEAR = parser.parse_args().year
 
     # read in measures config file to get dictionary with details to run each table
 
@@ -38,8 +36,8 @@ def main(args=None):
 
     # call gen_tables to do all processing for both sets of tables (regular and OP/OUD)
 
-    gen_tables(year = YEAR, version = VERSION, workbook = workbook, table_details = table_details, config_sheet_num='sheet_num_sud', table_type='SUD')
-    gen_tables(year = YEAR, version = VERSION, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD')
+    gen_tables(year = YEAR, workbook = workbook, table_details = table_details, config_sheet_num='sheet_num_sud', table_type='SUD')
+    gen_tables(year = YEAR, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD')
 
     # save tables
 

@@ -6,12 +6,11 @@ from .classes.TableClassWideTransform import TableClassWideTransform
 from .classes.TableClassCountsOnly import TableClassCountsOnly
 from .classes.TableClassDuals import TableClassDuals
 
-def gen_tables(*, year, version, workbook, table_details, config_sheet_num, table_type):
+def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type):
     """
     Function gen_tables to generate excel tables
     params:
         year str: year to run
-        version str: version of TAF
         workbook excel obj: template to write to
         table_details dict: dictionary with one table per key with details to write table
         table_type str: table to write (SUD or OUD)
