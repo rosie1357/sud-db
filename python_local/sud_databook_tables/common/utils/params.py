@@ -30,7 +30,7 @@ SPECDIR = lambda year: DIR_MAIN(year) / Path(r'Specs and table shells\Table shel
 
 SASDIR = lambda year: DIR_RESTRICTED(year) / 'ebi_output'
 
-OUTDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\final_tables')
+OUTDIR = lambda year: DIR_MAIN(year) / 'Output'
 
 LOGDIR = lambda year: DIR_RESTRICTED(year) / Path(r'python_local\logs')
 

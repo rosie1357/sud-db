@@ -15,10 +15,10 @@ from common.utils.general_funcs import generate_logger, print_to_log
 DIR_OLD = lambda year: DIR_MAIN(year) / 'Output'
 DIR_NEW = lambda year: OUTDIR(year)
 
-TABLES = { 'SUD': {'OLD' : lambda year: f"SUD DB Tables ({year}) - 2020-09-23.xlsx",
+TABLES = { 'SUD': {'OLD' : lambda year: f"SUD DB Tables ({year}) - 2021-06-15.xlsx",
                    'NEW' : lambda year, run_date: f"SUD DB Tables ({year}) - {run_date}.xlsx"},
 
-            'OUD':  {'OLD' : lambda year: f"SUD DB Tables_OUD ({year}) - 2020-09-23.xlsx",
+            'OUD':  {'OLD' : lambda year: f"SUD DB Tables (OUD) ({year}) - 2021-06-15.xlsx",
                      'NEW' : lambda year, run_date: f"SUD DB Tables (OUD) ({year}) - {run_date}.xlsx"}
         }
 

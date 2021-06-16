@@ -381,3 +381,43 @@ TABLE_MAPPINGS:
       - count
       - stat
     sheet_num_op: D.11.
+
+G_TABLE_MAPPINGS:
+
+  A.1.:
+    G.1.:
+      - pop_tot_base
+      - pop_sud_tot
+      - pop_sud_tot_stat
+    G.2.:
+      - pop_tot_base
+      - pop_sud_opioids_tot
+      - pop_sud_opioids_tot_stat
+
+  C.1.:
+    G.3.:
+      - pop_sud_tot_base
+      - trt_srvc_mat
+      - trt_srvc_mat_stat
+    G.4.:
+      - pop_sud_tot_base
+      - trt_srvc_emer_srvcs
+      - trt_srvc_emer_srvcs_stat
+    G.5.:
+      - pop_sud_tot_base
+      - trt_srvc_inpat
+      - trt_srvc_inpat_stat
+  C.2.:
+    G.6.:
+      - pop_sud_tot_base
+      - residential
+      - residential_stat
+    G.7.:
+      - pop_sud_tot_base
+      - outpatient
+      - outpatient_stat
+  F.1.:
+    G.8.: 
+      - nbenes
+      - any_service30
+      - any_service30_stat
