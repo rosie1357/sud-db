@@ -20,6 +20,7 @@ TABLE_MAPPINGS:
       - big_denom
       - count
       - stat
+    comparison_value: numerators
 
   t2:
     sas_ds: state_sud_methods
@@ -255,6 +256,7 @@ TABLE_MAPPINGS:
       - trt_srvc_scn_assmt 
       - trt_srvc_treat
     sheet_num_op: D.6.
+    comparison_value: 'None'
 
   t9:
     sas_ds: state_sud_set_srvc

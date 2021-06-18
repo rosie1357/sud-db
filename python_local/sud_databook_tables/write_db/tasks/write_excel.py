@@ -63,6 +63,9 @@ def write_cell(row_col, col_value, sheet, column, col_name):
     if col_name.endswith('_stat_diff'):
         cellref.number_format = '###,##0.00'
 
+    elif col_name.endswith('_pctdiff'):
+        cellref.number_format = '###,##0'
+
     elif '_stat' in col_name:
         cellref.number_format = '###,##0.0'
 

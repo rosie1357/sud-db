@@ -7,7 +7,7 @@ import argparse
 import openpyxl as xl
 from pathlib import Path
 
-from common.utils.params import SPECDIR, SHELL, SHELL_OUD, OUTDIR, OUTFILE, OUTFILE_OUD
+from common.utils.params import SPECDIR, SHELL, SHELL_OUD, OUTDIR, OUTFILE, OUTFILE_OUD, SHELL_PYEAR, OUTFILE_PYEAR
 from common.utils.general_funcs import variable_matcher, variable_constructor, read_config, get_current_path
 from .gen_tables import gen_tables
 
@@ -33,17 +33,25 @@ def main(args=None):
 
     table_details, g_table_details = CONFIG['TABLE_MAPPINGS'], CONFIG['G_TABLE_MAPPINGS']
 
-    # open shells (regular and OP/OUD)
+    # open shells (regular and OP/OUD, comp if requested)
 
     workbook = xl.load_workbook(SPECDIR(YEAR) / SHELL)
     workbook_oud = xl.load_workbook(SPECDIR(YEAR) / SHELL_OUD)
 
+    if PYR_COMP:
+        workbook_pyear = xl.load_workbook(SPECDIR(YEAR) / SHELL_PYEAR)
+
     # call gen_tables to do all processing for both sets of tables (regular and OP/OUD)
 
-    gen_tables(year = YEAR, workbook = workbook, table_details = table_details, config_sheet_num='sheet_num_sud', table_type='SUD', pyr_comp = PYR_COMP, g_table_details=g_table_details )
+    gen_tables(year = YEAR, workbook = workbook, table_details = table_details, config_sheet_num='sheet_num_sud', table_type='SUD', pyr_comp = PYR_COMP, 
+               g_table_details=g_table_details, workbook_pyear=workbook_pyear)
+
     gen_tables(year = YEAR, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD', pyr_comp = False)
 
     # save tables
 
     workbook.save(OUTDIR(YEAR) / OUTFILE(YEAR))
     workbook_oud.save(OUTDIR(YEAR) / OUTFILE_OUD(YEAR))
+
+    if PYR_COMP:
+        workbook_pyear.save(OUTDIR(YEAR) / OUTFILE_PYEAR(YEAR))

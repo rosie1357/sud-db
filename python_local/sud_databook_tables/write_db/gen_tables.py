@@ -5,9 +5,10 @@ from .classes.TableClass import TableClass
 from .classes.TableClassWideTransform import TableClassWideTransform
 from .classes.TableClassCountsOnly import TableClassCountsOnly
 from .classes.TableClassDuals import TableClassDuals
+from .classes.TableClassG import TableClassG
 from .classes.TableClassCompYears import TableClassCompYears
 
-def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, pyr_comp, g_table_details = {}):
+def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, pyr_comp, g_table_details={}, workbook_pyear=None):
     """
     Function gen_tables to generate excel tables
     params:
@@ -18,6 +19,8 @@ def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, p
         config_sheet_num str: name of sheet num param in config to pull for given table (sheet_num_sud or sheet_num_op)
         pyr_comp bool: boolean to specify read in prior year SAS datasets and create G tables (will only ever be run for SUD tables, if requested)
         g_table_details dict: dictionary of G table mappings with one input SUD sheet per key with details to write each corresponding G table, default is empty dict
+        workbook_pyear excel obj: excel obj to write comparison tables to if pyrcomp, default is None
+
 
     """
 
@@ -55,10 +58,12 @@ def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, p
 
             _tableclass.write_excel_sheet()
 
-            # if pyr_comp == True (prior year comparison G tables are requested), check if sheet_num_sud attribute for _tableclass is one of the keys
-            # in g_table_details (i.e. stats from SUD table number are used for any G tables) - if so, create prior year _tableclass
+            # if pyr_comp == True (prior year stand-alone tables and comparison G tables are requested), create prior year TableClass with prepped df,
+            # then write two sets of comparisons:
+            #   1. Comparisons specified in main config for stand-alone tables (if exists)
+            #   2. Loop over any G sheets specified for given table in g_table_details (if there are any - most sheets do not contribute to any G tables)
 
-            if (pyr_comp == True) & (_tableclass.sheet_num in g_table_details.keys()):
+            if pyr_comp == True:
 
                 pyear = int(year)-1
 
@@ -68,14 +73,22 @@ def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, p
 
                 _tableclass_p.prep_for_tables()
 
-                # write all G sheets for given G details key
+                # write comparison sheet if _tableclass attrib for comparison_value is not None (i.e. no corresponding comparison sheet for sheet)
 
-                for g_sheet_num, comp_cols in g_table_details[_tableclass.sheet_num].items():
+                if _tableclass.comparison_value != 'None':
 
-                    _tableclassComp = TableClassCompYears(_tableclass.prepped_df, _tableclass_p.prepped_df, workbook, g_sheet_num, comp_cols)
+                    _tableclassCompYears = TableClassCompYears(_tableclass, _tableclass_p.prepped_df, workbook_pyear)
 
-                    _tableclassComp.prep_for_tables()
+                    _tableclassCompYears.write_excel_sheet()
 
-                    _tableclassComp.write_excel_sheet()
+                # write all G sheets for given G details key if exists
+
+                if _tableclass.sheet_num in g_table_details.keys():
+
+                    for g_sheet_num, comp_cols in g_table_details[_tableclass.sheet_num].items():
+
+                        _tableclassG = TableClassG(_tableclass.prepped_df, _tableclass_p.prepped_df, workbook, g_sheet_num, comp_cols)
+
+                        _tableclassG.write_excel_sheet()
 
 

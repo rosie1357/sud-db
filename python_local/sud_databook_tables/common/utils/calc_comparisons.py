@@ -50,8 +50,8 @@ def calc_comparisons(*, data1, data2, join_on, how_join = 'outer', compare_cols 
                 joined[f"{col}_diff"].fillna(fill_na, inplace=True)
 
         if diff_types != 'raw':
-            joined[f"{col}_pctdiff"] = ((pd.to_numeric(joined[f"{col}{join_suffixes[0]}"], errors='coerce') - pd.to_numeric(joined[f"{col}{join_suffixes[1]}"], errors='coerce'))
-                                         /pd.to_numeric(joined[f"{col}{join_suffixes[1]}"],errors='coerce')).replace(np.inf, 'NA')
+            joined[f"{col}_pctdiff"] = 100 * ((pd.to_numeric(joined[f"{col}{join_suffixes[0]}"], errors='coerce') - pd.to_numeric(joined[f"{col}{join_suffixes[1]}"], errors='coerce'))
+                                               /pd.to_numeric(joined[f"{col}{join_suffixes[1]}"],errors='coerce')).replace(np.inf, 'NA')
             
             if fill_na:
                 joined[f"{col}_pctdiff"].fillna(fill_na, inplace=True)
