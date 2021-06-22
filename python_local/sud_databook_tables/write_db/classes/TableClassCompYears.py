@@ -24,21 +24,31 @@ class TableClassCompYears(TableClass):
         self.workbook = workbook
         self.sheet_name = _tableclass.sheet_num
         
-        # assign scol, specific cols to write/create comparisons for
+        # assign scol, specific cols to create comparisons for
 
         self.scol = 2
 
-        self.comp_cols = self._tableclass.big_denom
+        if self._tableclass.comparison_value in ['pct','avg']:
 
-        if self._tableclass.comparison_value == 'stat':
-
-            self.comp_cols = self.comp_cols + [col for col in self._tableclass.excel_cols if col.endswith('stat')]
+            stat_cols = [col for col in self._tableclass.excel_cols if col.endswith('stat')]
 
         elif self._tableclass.comparison_value == 'numerators':
 
-            self.comp_cols = self.comp_cols + self._tableclass.numerators
+            stat_cols = self._tableclass.numerators
 
-        self.excel_cols = [f"{col}_{suffix}" for col in self.comp_cols for suffix in ['py','cy', 'pctdiff']]
+        # assign cols to write to excel (write pctdiff for denom for all tables, for pct write raw diff for all comp cols otherwise write pctdiff)
+
+        if self._tableclass.comparison_value == 'pct':
+            diff_type = 'diff'
+        else:
+            diff_type = 'pctdiff'
+
+        self.excel_cols = [f"{col}_{suffix}" for col in self._tableclass.big_denom for suffix in ['py','cy', 'pctdiff']] + \
+             [f"{col}_{suffix}" for col in stat_cols for suffix in ['py','cy', diff_type]]
+
+        # create comp_cols (denom + stat_cols)
+
+        self.comp_cols = self._tableclass.big_denom + stat_cols
 
         # create prepped df to write to tables
 
@@ -54,4 +64,4 @@ class TableClassCompYears(TableClass):
         keep_cols = ['state'] + self.comp_cols
 
         self.prepped_df = calc_comparisons(data1 = self._tableclass.prepped_df[keep_cols], data2 = self.prepped_df_p[keep_cols], 
-                                           join_on = 'state', diff_types = 'pct', join_suffixes = ('_cy','_py'), fill_na='.')
+                                           join_on = 'state', diff_types = 'both', join_suffixes = ('_cy','_py'), fill_na='.')

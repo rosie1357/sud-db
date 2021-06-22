@@ -39,7 +39,7 @@ class BaseDataClass():
         self.values_transpose = ['numer','denom']
         self.prop_mult = 100
         self.suppress_second = False
-        self.comparison_value = 'stat'
+        self.comparison_value = 'pct'
 
         # read in totals df to use in all with each creation of TableClass
 

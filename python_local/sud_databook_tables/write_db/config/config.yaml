@@ -348,6 +348,7 @@ TABLE_MAPPINGS:
       - count
       - stat
     sheet_num_op: D.9.
+    comparison_value: avg
 
   t12:
     sas_ds: state_sud_methods
