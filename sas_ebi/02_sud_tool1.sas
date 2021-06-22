@@ -93,11 +93,6 @@
 
 	) by tmsis_passthrough;
 
-	/*title2 "Freq of SUD_TOOL_RULE_HDR on stacked rolled up claims from all file types - ";
-	title3 "subset to claims with non-null value of SUD_TOOL_RULE_HDR only";
-
-	%frequency(allclaims_rollup,SUD_TOOL_RULE_HDR); */
-
 	** Now must create bene-level flags for each condition, based on the value of SUD_RULE values for individual indicators:
 	    - If SUD_TOOL_RULE = 1 on any claim with the condition flag set to 1, then set the bene-level condition flag to 1
 	    - If SUD_TOOL_RULE = 2 on two claims with different srvc_date values with the condition flag set to 1, set bene-level flag to 1
@@ -152,19 +147,6 @@
 
 		) by tmsis_passthrough;
 
-		/*title2 "Summary stats for RULE2_SUM and RULE3_SUM (# of unique dates with each rule) for &ind. (bene-level)";
-
-		select * from connection to tmsis_passthrough
-		(select count(*) as nbenes,
-                min(RULE2_SUM) as RULE2_SUM_min,
-		        avg(RULE2_SUM :: float) as RULE2_SUM_avg,
-				max(RULE2_SUM) as RULE2_SUM_max,
-				min(RULE3_SUM) as RULE3_SUM_min,
-		        avg(RULE3_SUM :: float) as RULE3_SUM_avg,
-				max(RULE3_SUM) as RULE3_SUM_max
-
-		 from &ind._23 ); */
-
 		 ** Now join the two tables together to create a table with ALL benes identified from
 		    either method;
 
@@ -190,10 +172,6 @@
 			   a.msis_ident_num = b.msis_ident_num
 
 		 ) by tmsis_passthrough;
-
-		 /*title2  "Join of bene-level tables using rule 1 vs rule 2/3 for &ind.";
-
-		 %crosstab(&ind.,RULE_1 RULE_23); */
 
 	%end;
 
@@ -265,21 +243,5 @@
 			%end;
 
 	) by tmsis_passthrough;
-
-	/*title2 "Frequencies of all final bene-level indicators";
-
-	%frequency(BENE_SUD_TOOL1,POP_SUD_TOOL1)
-	%crosstab(BENE_SUD_TOOL1,POP_SUD_TOOL1 CNT_SUD_TOOL1)
-	%crosstab(BENE_SUD_TOOL1,CNT_SUD_TOOL1 SUD_PLYSBSTNCE_TOOL1)
-
-	%do s=1 %to %sysfunc(countw(&indicators.));
-		%let ind=%scan(&indicators.,&s.);
-
-		%frequency(BENE_SUD_TOOL1,SUD_&ind._TOOL1);
-
-	%end;   
-
-	%crosstab(BENE_SUD_TOOL1,POP_SUD_NLTRXNE SUD_ALCHL_TOOL1 SUD_OPIOIDS_TOOL1 POP_SUD_OPIOIDS); */
-
 
 %mend SUD_TOOL1;

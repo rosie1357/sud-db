@@ -92,15 +92,6 @@
 
 	%crosstab(population2,SUD_OPIOIDS SUD_OPIOIDS_TOOL1 SUD_OPIOIDS_DX_ONLY OUD_NODX);
 
-	** Create output table to look by state at all those with an SUD who have ALL null rbf;
-
-	create table rstrctd_bnfts_cd_null as select * from connection to tmsis_passthrough
-	(select submtg_state_cd, count(*) as nbenes, sum(rstrctd_bnfts_cd_null) as nnulls, 100 * (nnulls :: float / nbenes) as pct
-	from population2
-	where POP_SUD=1
-	group by submtg_state_cd
-    order by pct);
-
 	** Also create a table with only SUD benes to be used in all further analyses (except initial method counts);
 
 	execute (

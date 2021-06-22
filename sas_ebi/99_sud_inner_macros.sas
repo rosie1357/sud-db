@@ -31,13 +31,386 @@
 
 %mend leapyear;
 
+** Macro redshift_insert, copied directly from tool 1 code;
+
+%macro redshift_insert(dsname);
+
+	*get variable names and formats;
+	proc contents data=&dsname. out=cnt (keep=name length type varnum formatd) noprint;
+	run;
+
+	*assign Redshift data type based on SAS format;
+	data cnt (keep=name redshift_type varnum type);
+		set cnt;
+		if type=2 then redshift_type = cats('varchar(',length,')');
+			else if type = 1 and formatd = 0 then redshift_type = 'bigint';
+			else if type = 1 and formatd > 0 then redshift_type = 'float8';
+	run;
+
+	proc sql noprint;
+		*get lists of variables and their types;
+		select name, redshift_type, type
+		into :varlist separated by ' ', :rtypelist separated by ' ', :typelist separated by ' '
+		from cnt
+		order by varnum;
+
+		*get a count of variables;
+		select count(*)
+		into :varcount
+		from cnt;
+	quit;
+	run;
+
+	*create a dataset with the commands for inserting each row;
+	data insertcmds (keep=insert);
+		set &dsname end=eof;
+		length insert $200.;
+		insert = '(';
+		*treat last variable differently, so only go through count - 1;
+		%do j = 1 %to %eval(&varcount. - 1);
+			*if numeric, the data can be uploaded without quotes;
+			%if %scan(&typelist.,&j.) = 1 %then %do;
+				insert = cats(insert,%scan(&varlist.,&j.),',');
+			%end;		
+			%else %do;
+				insert = cats(insert,'''',%scan(&varlist.,&j.),''',');
+			%end;
+		%end;
+		*this is for the last variable on the list;
+		*if numeric, no quotes needed;
+		%if %scan(&typelist.,&varcount.) = 1 %then %do;
+			if not eof then insert = cats(insert,%scan(&varlist.,&varcount.),'),');
+			else insert = cats(insert,%scan(&varlist.,&varcount.),');');
+		%end;	
+		%else %do;
+			if not eof then insert = cats(insert,'''',%scan(&varlist.,&varcount.),'''),');
+			else insert = cats(insert,'''',%scan(&varlist.,&varcount.),''');');
+		%end;
+	run;
+
+	data createcmd;
+		length create $200.;
+		create = '';
+		%do j = 1 %to %eval(&varcount. - 1);
+			create = cats(create,"%scan(&varlist.,&j.) %scan(&rtypelist.,&j.,,s)",', ');
+		%end;
+		create = cats(create,"%scan(&varlist.,&varcount.) %scan(&rtypelist.,&varcount.,,s)");
+	run;
+
+	*build a text file of the needed SQL commands;
+	filename inscmds "&indata./&dsname..txt";
+	data _null_;
+	set 
+	    createcmd
+		insertcmds end=eof;
+	file inscmds;
+	if _n_ = 1 then do;
+		put 'execute(';
+		put "create temp table &dsname. (";
+		put create;
+		put ');';
+		put "insert into &dsname. values";
+	end;
+	else do;
+	put insert;
+	if eof then put ') by tmsis_passthrough;';
+	end;
+	run;
+
+	 
+	 proc datasets lib=work;
+	 delete insertcmds createcmd cnt;
+	 run;
+
+%mend redshift_insert;
+
+** Macro create_tool1_lookups - modified code from tool 1 to read in lookup lists and create text files;
+
+%macro create_tool1_lookups(excel=);
+
+	******************************
+	FACILITY
+	******************************;
+	PROC IMPORT DATAFILE = "&indata./&excel."
+				DBMS	 = XLSX 
+				OUT 	 = FAC_RAW
+				REPLACE;
+				GETNAMES = NO;
+				SHEET    = "SUD Facility claims";
+				DATAROW  = 3;
+	RUN;
+
+	DATA FAC_ALL CODES_FAC (keep=CODE_SOURCE CODE USE_DX RULE CATEGORY) CODES_OFAC (keep=CODE_SOURCE CODE USE_DX RULE CATEGORY);
+	LENGTH CODE_SOURCE $10 CODE $15;
+	SET FAC_RAW;
+	if missing(A) then delete;
+
+		IF SUBSTR(E,1,1) = '1' THEN RULE = 1;
+		ELSE IF SUBSTR(E,1,1) = '2' THEN RULE = 2;
+		ELSE RULE = 3;
+
+		IF B = 'Type of bill codes' THEN CODE_SOURCE = "TOB";
+		ELSE IF UPCASE(SCAN(B, 1, " ")) IN ("HCPCS", "CPT") THEN CODE_SOURCE = "CPT";
+		ELSE IF UPCASE(SCAN(B, 1, " ")) IN ("ICD-10","ICD-9") THEN CODE_SOURCE = "ICD";
+		ELSE IF UPCASE(SCAN(B, 1, " ")) = "REVENUE" THEN CODE_SOURCE = "REV";
+
+		CODE = COMPRESS(C,"*");
+
+		USE_DX = 1;
+
+		IF A = 'Overnight facility claims' THEN CATEGORY = "OFAC";
+		ELSE IF UPCASE(SCAN(A, 1, " ")) = "FACILITY" THEN CATEGORY = "FAC";
+
+		OUTPUT FAC_ALL;
+
+		IF CATEGORY = "OFAC" THEN OUTPUT CODES_OFAC;
+		ELSE IF CATEGORY = "FAC" THEN OUTPUT CODES_FAC;
+	RUN;
+
+	title2 "QC creation of facility lists - full file";
+
+	proc freq data=FAC_ALL;
+		tables a * b * code_source * category e * rule / list missing;
+	run;
+
+	title2 "QC creation of facility lists - OFAC only";
+
+	proc freq data=CODES_OFAC;
+		tables category * code_source / list missing;;
+	run;
+
+	title2 "QC creation of facility lists - FAC only";
+
+	proc freq data=CODES_FAC;
+		tables category * code_source / list missing;;
+	run;
+
+
+	******************************
+	PROFESSIONAL
+	*****************************;
+	PROC IMPORT DATAFILE = "&indata./&excel."
+					DBMS	 = XLSX 
+					OUT 	 = PROF_RAW
+					REPLACE;
+					GETNAMES = NO;
+					SHEET    = "SUD Professional claims";
+					DATAROW  = 3;
+	RUN;
+
+
+	DATA CODES_PROF;
+	LENGTH CODE_SOURCE  $10 CODE $15;
+	SET PROF_RAW;
+
+			IF INDEX(UPCASE(D), "PLACE OF SERVICE") > 0 THEN RULE = 4;
+		ELSE IF SUBSTR(D,1,1) = '1' THEN RULE = 1;
+		ELSE IF SUBSTR(D,1,1) = '2' THEN RULE = 2;
+		ELSE RULE = 3;
+
+		IF UPCASE(SCAN(A, 1, " ")) IN ("HCPCS", "CPT") THEN CODE_SOURCE = "CPT";
+		ELSE IF UPCASE(SCAN(A, 1, " ")) IN ("ICD-10","ICD-9") THEN CODE_SOURCE = "ICD";
+
+		CODE = COMPRESS(B,"*");
+
+		USE_DX = 1;
+
+		CATEGORY = "PROF";
+
+		IF NOT MISSING(C) THEN OUTPUT;
+	RUN;
+
+	title2 "QC creation of prof codes";
+
+	proc freq data=CODES_PROF;
+		tables a * code_source * category d * rule / list missing;
+	run;
+
+	data CODES_PROF;
+		set CODES_PROF;
+		keep CODE_SOURCE CODE USE_DX RULE CATEGORY;
+	run;
+
+	******************************
+	All Diagnoses
+	******************************;
+	%MACRO READIN_SUD(SUD, sheet=);
+
+	%if &sheet. =  %then %let sheet= &SUD. Dx;
+
+	PROC IMPORT DATAFILE = "&indata./&excel."
+				DBMS	 = XLSX 
+				OUT 	 = &SUD._RAW
+				REPLACE;
+				GETNAMES = NO;
+				SHEET    = "&sheet.";
+				DATAROW  = 3;
+	RUN;
+
+	DATA &SUD.(KEEP = CODE DESC_LONG DESC_SHORT CATEGORY);
+	SET &SUD._RAW;
+	LENGTH CODE $ 15;
+
+
+		%if &sud = OPIOIDS %then %let sud = opioid;
+		RENAME B = CODE; 
+		RENAME C = DESC_LONG;
+		DESC_SHORT = LOWCASE("&SUD."); 
+		CATEGORY = "DX";
+
+		WHERE NOT MISSING(C) and B ne " > 1 SUD";
+
+	RUN;
+
+	title2 "Diagnosis codes: &sud.";
+
+	proc freq;
+		tables DESC_SHORT / missing;
+	run;
+
+
+	%MEND READIN_SUD;
+
+	%READIN_SUD(ALCOHOL);
+	%READIN_SUD(%STR( Tobacco));
+	%READIN_SUD(OPIOIDS);
+	%READIN_SUD(CANNABIS);
+	%READIN_SUD(CAFFEINE);
+	%READIN_SUD(HALLUCINOGENS);
+	%READIN_SUD(INHALANTS);
+	%READIN_SUD(STIMULANTS);
+	%READIN_SUD(POLYSUBSTANCE);
+	%READIN_SUD(SHA, sheet=%str(Sedatives, Hypnotics, Anxi. Dx))
+	%READIN_SUD(OTHER, sheet=%str(Other or Unknown Dx))
+
+	proc sql;
+
+	CREATE TABLE CODES_SUD AS 
+	SELECT CODE, DESC_SHORT FROM ALCOHOL WHERE LENGTH(CODE) < 12
+	UNION ALL
+	SELECT CODE, DESC_SHORT FROM TOBACCO WHERE LENGTH(CODE) < 12
+	UNION ALL
+	SELECT CODE, DESC_SHORT FROM OPIOIDS WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM CANNABIS WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM CAFFEINE WHERE LENGTH(CODE) < 12
+	UNION ALL
+	SELECT CODE, DESC_SHORT FROM HALLUCINOGENS WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM INHALANTS WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM STIMULANTS WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM POLYSUBSTANCE WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM SHA WHERE LENGTH(CODE) < 12
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM OTHER WHERE LENGTH(CODE) < 12
+	;
+	QUIT;
+
+
+	title2 "All SUD diagnosis codes stacked";
+
+	proc freq data=codes_sud;
+		tables desc_short;
+	run;
+
+
+	******************************
+	SUD RX
+	******************************;
+	%MACRO READIN_RX(SUD,SHEET);
+	PROC IMPORT DATAFILE = "&indata./&excel."
+				DBMS	 = XLSX 
+				OUT 	 = &SUD.RX_RAW
+				REPLACE;
+				GETNAMES = NO;
+				SHEET    = "&SHEET.";
+				DATAROW  = 3;
+	RUN;
+
+	DATA &SUD.RX(KEEP = CODE DESC_LONG DESC_SHORT CATEGORY);
+	SET &SUD.RX_RAW;
+		LENGTH CODE $ 15;
+
+		%if &sud = OPIOIDS %then %let sud = opioid;
+
+		length desc_short $ 30;
+
+		RENAME A = CODE; 
+		RENAME B = DESC_LONG;
+		DESC_SHORT = LOWCASE("&SUD.");
+		CATEGORY = "RX";
+
+		WHERE NOT MISSING(A) and A ne 'End of worksheet';
+	RUN;
+	%MEND READIN_RX;
+
+
+	%READIN_RX(ALCOHOL, %STR(ALCOHOL RX));
+	%READIN_RX(TOBACCO, %STR(TOBACCO RX));
+	%READIN_RX(OPIOIDS, %STR(OPIOIDS_RX));
+
+	DATA NATLRX;
+	SET ALCOHOLRX;
+
+	DESC_SHORT = "naltrexone";
+	WHERE INDEX(DESC_LONG,"NALTREXONE") > 0;
+
+	RUN;
+
+	DATA NATLRX2;
+	SET OPIOIDSRX;
+
+	DESC_SHORT = "naltrexone";
+	WHERE INDEX(DESC_LONG,"NALTREXONE") > 0;
+
+	RUN;
+
+
+	PROC SQL;
+	CREATE TABLE CODES_RX AS 
+	SELECT CODE, DESC_SHORT FROM ALCOHOLRX
+	UNION ALL
+	SELECT CODE, DESC_SHORT FROM TOBACCORX
+	UNION ALL
+	SELECT CODE, DESC_SHORT FROM OPIOIDSRX
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM NATLRX 
+	UNION ALL 
+	SELECT CODE, DESC_SHORT FROM NATLRX2
+	;
+	QUIT;
+
+	title2 "All RX codes";
+
+	proc freq data=codes_rx;
+		tables desc_short / missing;
+	run;
+
+
+	/**OUTPUT ALL SHEETS*/
+
+	%redshift_insert(codes_fac)
+	%redshift_insert(codes_ofac)
+	%redshift_insert(codes_prof)
+	%redshift_insert(codes_sud)
+	%redshift_insert(codes_rx)
+
+
+%mend create_tool1_lookups;
+
+
+
 
 ** Read in SUD-specific procedure, revenue, and place of service codes to create a text file that will create a lookup table
    (used to identify SUD services with method 3, which does not use diagnosis codes);
 
-%macro redshift_insert_sud_codes;
+%macro redshift_insert_sud_codes(excel=);
 
-	proc import datafile="&indata./T-MSIS data book code lists_2019.xlsx" dbms=xlsx replace out=sud_codes;
+	proc import datafile="&indata./&excel." dbms=xlsx replace out=sud_codes;
 		sheet="SUD specific codes";
 		getnames=no;
 	run;
@@ -82,9 +455,9 @@
 
 ** Read in crosswalk of setting and service types (to map procedure/TOB/POS/rev codes);
 
-%macro redshift_insert_mapping;
+%macro redshift_insert_mapping(excel=);
 
-	proc import datafile="&indata./T-MSIS data book code lists_2019.xlsx" dbms=xlsx replace out=setting_types;
+	proc import datafile="&indata./&excel." dbms=xlsx replace out=setting_types;
 		sheet="Setting Types";
 		getnames=no;
 	run;
@@ -143,7 +516,7 @@
 
 	** Now do the same, but for Service Types;
 
-	proc import datafile="&indata./T-MSIS data book code lists_2019.xlsx" dbms=xlsx replace out=service_types;
+	proc import datafile="&indata./&excel." dbms=xlsx replace out=service_types;
 		sheet="Service types";
 		getnames=no;
 	run;
@@ -195,6 +568,23 @@
 
 %mend redshift_insert_mapping;
 
+%macro recode_state_codes(prefix=);
+
+	case when &prefix..submtg_state_cd in ('30','94') then '30'
+	      when &prefix..submtg_state_cd in ('42','97') then '42'
+	      when &prefix..submtg_state_cd in ('56','93') then '56'
+	      else &prefix..submtg_state_cd 
+          end as submtg_state_cd
+
+	,case when &prefix..submtg_state_cd in ('30', '42', '56',
+                                  '94', '97', '93')
+           then concat(&prefix..msis_ident_num, &prefix..submtg_state_cd)
+           else &prefix..msis_ident_num  
+           end as msis_ident_num
+                     
+
+%mend recode_state_codes;
+
 /* Macro readclaims to read in both header and line files for given year, keeping needed cols.
    Only keep FFS/ENC records;
    Macro parms:
@@ -206,15 +596,12 @@
 
 %macro readclaims(fltype, hvars=, lvars=, hvars_nulls=, lvars_nulls=);
 
-	** First join header to max run ID;
-
 	execute (
 		create temp table &fltype.H as
-		select submtg_state_cd,
-		       &fltype._fil_dt,
+		select %recode_state_codes(prefix=a)
+		       ,&fltype._fil_dt,
 			   da_run_id,
 			   &fltype._link_key,
-			   msis_ident_num,
 			   mc_plan_id,
 			   clm_type_cd,
 
@@ -292,75 +679,19 @@
 				%end;
 
 
-		from cms_prod.data_anltcs_taf_&fltype.h_vw 
+		from cms_prod.data_anltcs_taf_&fltype.h_vw a
 
-		where ltst_run_ind=1 and substring(&fltype._fil_dt,1,4) = %nrbquote('&year.') and clm_type_cd in ('1','U','3','W')
-		and (submtg_state_cd != '17' or (submtg_state_cd = '17' and adjstmt_ind = '0' and adjstmt_clm_num is null)) and
-		    submtg_state_cd not in (&states_exclude.)
+		where ltst_run_ind=1 and 
+              substring(&fltype._fil_dt,1,4) = %nrbquote('&year.') and
+              clm_type_cd in ('1','U','3','W') and
+		      (submtg_state_cd != '17' or (submtg_state_cd = '17' and adjstmt_ind = '0' and adjstmt_clm_num is null)) and
+		       submtg_state_cd not in (&states_exclude.)
 
 	) by tmsis_passthrough;
 
 	title2 "Run IDs pulled - &fltype.";
 
 	%crosstab(&fltype.H, &fltype._fil_dt da_run_id)
-
-	title2 "QC creation of CLAIM_MC and CLAIM_FFS - &fltype.";
-
-	%crosstab(&fltype.H,clm_type_cd CLAIM_MC CLAIM_FFS)
-
-	%if &fltype. ne RX %then %do;
-
-		title2 "QC creation of bill_type_cd_lkup - &fltype.";
-
-		%crosstab(&fltype.H,bill_type_cd_lkup bill_type_cd);
-
-	%end;
-
-	%if &fltype. = IP %then %do;
-		
-		title2 "Freq of procedure codes recoded for CA only - &fltype.";
-
-		%crosstab(&fltype.H, prcdr_1_cd,
-                   wherestmt=%nrstr(where submtg_state_cd = '06' and prcdr_1_cd in ('Z7502','99281','00001','T1015')));
-
-		** For GA only, look at IP claims identified as IP vs not;
-
-		title2 "Frequency of IP_CLM for GA IP claims";
-
-		%crosstab(&fltype.H,IP_CLM,wherestmt=%nrstr(where submtg_state_cd='13'))
-
-		title2 "GA IP claims identified as actual IP";
-
-		%crosstab(&fltype.H,hosp_type_cd,wherestmt=%nrstr(where submtg_state_cd='13' and IP_CLM=1))
-		%crosstab(&fltype.H,bill_type_cd,wherestmt=%nrstr(where submtg_state_cd='13' and IP_CLM=1))
-
-		title2 "GA IP claims identified as NOT IP (will go into OT file)";
-
-		%crosstab(&fltype.H,hosp_type_cd,wherestmt=%nrstr(where submtg_state_cd='13' and IP_CLM=0))
-		%crosstab(&fltype.H,bill_type_cd,wherestmt=%nrstr(where submtg_state_cd='13' and IP_CLM=0))
-
-		** Output a crosstab of original vs new diagnosis code for TN;
-
-		%crosstab(&fltype.H, dgns_1_cd_orig dgns_1_cd, wherestmt=%nrstr(where submtg_state_cd='47'), outfile=qcout.tn_diag_codes)
-			
-
-	%end;
-
-	** For additional QC, loop over all header vars to get counts of nulls;
-
-	create table sasout.&fltype.h_nulls as select * from connection to tmsis_passthrough
-	(select submtg_state_cd,
-	        count(*) as nrecs
-	        %do i=1 %to %sysfunc(countw(&hvars_nulls.));
-				%let var=%scan(&hvars_nulls.,&i.);
-		        ,sum(case when &var. is null then 1 else 0 end) as &var._null
-			%end;
-			%if &fltype. = OT %then %do;
-				,sum(case when bill_type_cd is null and srvc_plc_cd is null then 1 else 0 end) as bill_type_srvc_plc_null
-			%end;
-
-	from &fltype.H
-	group by submtg_state_cd); 
 
 	** Now join to line - add _temp suffix to IP/OT files because must remove all non-IP claims from GA IP file and put 
 	   into OT, and then create final tables.;
@@ -415,51 +746,12 @@
 		     left join
 			 cms_prod.data_anltcs_taf_&fltype.l_vw b
 
-		on a.submtg_state_cd = b.submtg_state_cd and 
-		   a.&fltype._fil_dt = b.&fltype._fil_dt and
+		on a.&fltype._fil_dt = b.&fltype._fil_dt and
 		   a.da_run_id = b.da_run_id and
 		   a.&fltype._link_key = b.&fltype._link_key
 
 	) by tmsis_passthrough;
 
-	%if &fltype. = OT %then %do;
-		
-		title2 "Freq of procedure codes recoded for CA only - &fltype.";
-
-		%crosstab(&fltype.HL&suffix., prcdr_1_cd,
-                   wherestmt=%nrstr(where submtg_state_cd = '06' and prcdr_1_cd in ('Z7502','99281','00001','T1015')))
-
-		title2 "Top 20 HCPCS_RATE values after setting invalids to null";
-
-		execute (
-			create temp table &fltype._hcpcs_rate as
-
-			select prcdr_2_cd
-				   ,count(*) as count_lines
-
-			from &fltype.HL&suffix.
-			group by prcdr_2_cd
-
-		) by tmsis_passthrough;
-
-		select * from connection to tmsis_passthrough
-		(select prcdr_2_cd, count_lines from &fltype._hcpcs_rate order by count_lines desc limit 20);
-
-
-	%end;
-
-	** For additional QC, loop over all line vars to get counts of nulls;
-
-	create table sasout.&fltype.l_nulls as select * from connection to tmsis_passthrough
-	(select submtg_state_cd,
-	        count(*) as nrecs
-		    %do i=1 %to %sysfunc(countw(&lvars_nulls.));
-				%let var=%scan(&lvars_nulls.,&i.);
-			    ,sum(case when &var. is null then 1 else 0 end) as &var._null
-			%end;
-
-	from &fltype.HL&suffix.
-	group by submtg_state_cd); 
 
 	**** Now must reformat GA IP to look like OT;
 
@@ -504,53 +796,14 @@
 
 		   ) by tmsis_passthrough;
 
-		   ** Select a sample of claims to print before and after procedure codes;
-
-		   execute (
-		   	  create temp table GA_SAMP_ID as
-			  select *,
-			         row_number() over (order by &fltype._link_key) as benenum
-
-			  from (
-				  select distinct &fltype._link_key
-					                  
-				  from &fltype.H 
-	              where IP_CLM=0 and prcdr_2_cd is not null
-
-				  limit 10 )
-
-		   ) by tmsis_passthrough;
-
-		   title2 "Sample print of 10 GA IP claims to go into OT file - before and after transposing procedure codes";
-
-		   select * from connection to tmsis_passthrough
-		   (select benenum, a.&fltype._link_key %do p=1 %to 6; ,prcdr_&p._cd %end;
-
-		    from &fltype.H a
-			     inner join 
-				 GA_SAMP_ID b
-		    	 on a.&fltype._link_key = b.&fltype._link_key
-               order by benenum ); 
-
-		   select * from connection to tmsis_passthrough
-		   (select benenum, a.&fltype._link_key, prcdr_1_cd
-
-		    from GA_PROCS a
-			     inner join 
-				 GA_SAMP_ID b
-		    	 on a.&fltype._link_key = b.&fltype._link_key
-            order by benenum); 
-
-			** Now must join the transposed procedure codes back to the line-level table, reformatting the table
-			   to look like OT;
 
 			execute (
 				create temp table GA_IP_TO_OT as
 				select a.submtg_state_cd,
+					   msis_ident_num,
 				       a.&fltype._fil_dt,
 					   a.da_run_id,
 					   a.&fltype._link_key,
-					   msis_ident_num,
 					   mc_plan_id,
 					   clm_type_cd,
 					   CLAIM_MC,
@@ -582,34 +835,7 @@
 
 			) by tmsis_passthrough;
 
-			** Now take the same sample IDs and print before and after lines;
-
-			title2 "Sample print of 5 GA IP claims to go into OT file - before and after joining raw lines to transposed procedure codes";
-
-			%do n=1 %to 5;
-
-				title3 "For Bene #&n.";
-
-			   select * from connection to tmsis_passthrough
-			   (select a.&fltype._link_key, orgnl_line_num, bill_type_cd, rev_cd, ndc_cd %do p=1 %to 6; ,prcdr_&p._cd %end;
-
-			    from &fltype.HL&suffix. a
-				     inner join 
-					 (select * from GA_SAMP_ID where benenum=&n.) b
-			    	 on a.&fltype._link_key = b.&fltype._link_key
-	            order by &fltype._link_key, orgnl_line_num ); 
-
-			   select * from connection to tmsis_passthrough
-			   (select a.&fltype._link_key, orgnl_line_num, bill_type_cd, rev_cd, ndc_cd, prcdr_1_cd, prcdr_2_cd
-
-			    from GA_IP_TO_OT a
-				     inner join 
-					 (select * from GA_SAMP_ID where benenum=&n.) b
-			    	 on a.&fltype._link_key = b.&fltype._link_key
-	            order by &fltype._link_key, orgnl_line_num); 
-
-		 	%end;
-
+			
 		** Now subset IP lines to IP_CLM=1;
 
 		execute (
@@ -618,11 +844,6 @@
 			where IP_CLM=1
 
 		) by tmsis_passthrough;
-
-		title2 "Number of GA IP records kept as IP (check matches above)";
-
-		select * from connection to tmsis_passthrough
-		(select count(distinct &fltype._link_key) as count_claims from &fltype.HL  where submtg_state_cd='13'); 
 
 
 	%end; ** end of IP loop;
@@ -641,25 +862,6 @@
 
 		) by tmsis_passthrough;
 
-		title2 "Number of GA IP records assigned to OT (check matches above)";
-
-		select * from connection to tmsis_passthrough
-		(select count(distinct &fltype._link_key) as count_claims from &fltype.HL  where submtg_state_cd='13' and FROM_IP=1);
-
-		title2 "Frequencies of GA IP records assigned to OT (check values look OK - also look at output SAS table with sample recs)";
-
-		%crosstab(&fltype.HL,clm_type_cd,wherestmt=%nrstr(where submtg_state_cd='13' and FROM_IP=1));
-		%crosstab(&fltype.HL,CLL_STUS_CD,wherestmt=%nrstr(where submtg_state_cd='13' and FROM_IP=1));
-
-		create table GA_IP_TO_OT_SAMPLE as select * from connection to tmsis_passthrough
-		(select * from &fltype.HL where submtg_state_cd='13' and FROM_IP=1 limit 1000);
-
-		create table GA_IP_TO_OT_SAMPLE2 as select * from connection to tmsis_passthrough
-		(select * from &fltype.HL where submtg_state_cd='13' and FROM_IP=1 and srvc_endg_dt is not null limit 1000);
-
-		create table GA_IP_TO_OT_SAMPLE3 as select * from connection to tmsis_passthrough
-		(select * from &fltype.HL where submtg_state_cd='13' and FROM_IP=1 and prcdr_1_cd is not null limit 1000); 
-
 	%end;
 
 	** Finally join to the desired population to only keep claims for benes in the population;
@@ -669,7 +871,7 @@
 		select b.*
 
 		from population a
-		     left join
+		     inner join
 			 &fltype.HL b
 
 		on a.submtg_state_cd = b.submtg_state_cd and
@@ -738,34 +940,6 @@
 
 		) by tmsis_passthrough;
 
-		title2 "Freqs and prints of header/line join to SUD diagnosis code table lookup - &fltype.";
-
-		%crosstab(&fltype.HL2,SUD_DGNS)
-
-		select * from connection to tmsis_passthrough
-		(select SUD_DGNS %do d=1 %to &ndiag.; ,dgns_&d._cd ,desc_&d. %end; from &fltype.HL2 where SUD_DGNS=1 limit 20);
-
-		%do s=1 %to %sysfunc(countw(&indicators.));
-			%let ind=%scan(&indicators.,&s.);
-
-			%crosstab(&fltype.HL2,&ind._SUD_DSRDR_DGNS);
-
-			select * from connection to tmsis_passthrough
-			(select &ind._SUD_DSRDR_DGNS %do d=1 %to &ndiag.; ,desc_&d. %end; from &fltype.HL2 where &ind._SUD_DSRDR_DGNS=1 limit 10);
-
-		%end;
-
-		%crosstab(&fltype.HL2,SUD_DSRDR_CNT_DGNS)
-
-		select * from connection to tmsis_passthrough
-		(select SUD_DSRDR_CNT_DGNS %do s=1 %to %sysfunc(countw(&indicators.));
-			                     %let ind=%scan(&indicators.,&s.);
-								 ,&ind._SUD_DSRDR_DGNS
-							  %end;
-							  %do d=1 %to &ndiag.; ,desc_&d. %end;
-		from &fltype.HL2
-		where SUD_DSRDR_CNT_DGNS>1 limit 20); 
-
 %mend join_sud_dgns;
 
 %macro lab_transport(fltype, nproc=);
@@ -809,19 +983,6 @@
 
 		) by tmsis_passthrough;
 
-		title2 "QC creation of all_prcdr_labtrans indicator (all non-null proc codes IDed as lab/transport) - &fltype.";
-
-		%crosstab(&fltype.HL_labt,all_prcdr_labtrans)
-		%crosstab(&fltype.HL_labt,all_prcdr_labtrans n_prcdr_labtrans n_prcdr_not_null)
-
-		select * from connection to tmsis_passthrough
-		(select all_prcdr_labtrans, n_prcdr_labtrans, n_prcdr_not_null %do p=1 %to &nproc.; ,prcdr_&p._cd %end; 
-         from &fltype.HL_labt where all_prcdr_labtrans=0 limit 20);
-
-		select * from connection to tmsis_passthrough
-		(select all_prcdr_labtrans, n_prcdr_labtrans, n_prcdr_not_null %do p=1 %to &nproc.; ,prcdr_&p._cd %end; 
-         from &fltype.HL_labt where all_prcdr_labtrans=1 limit 20);
-
 		 ** Now subset to those with all_prcdr_labtrans=0;
 
 		 execute (
@@ -859,17 +1020,6 @@
 		on a.ndc_cd = b.CODE
 
 	) by tmsis_passthrough;
-
-	title2 "Join of NDC codes to SUD NDC list - &fltype.";
-
-	%crosstab(&fltype.HL3,SUD_RX)
-
-	%do s=1 %to %sysfunc(countw(&indicators.));
-		%let ind=%scan(&indicators.,&s.);
-
-		%crosstab(&fltype.HL3,&ind._SUD_DSRDR&suffix.);
-
-	%end; 
 
 	** For all files except RX, take the MAX of all inds across the header (to then join back to header);
 
@@ -925,19 +1075,6 @@
 
 		) by tmsis_passthrough;
 
-		title2 "Join of SUD diagnosis codes to SUD RX codes to keep all claims";
-		title3 "with either diagnosis code or RX code";
-
-		%crosstab(&fltype._sud,SUD_DGNS SUD_RX SUD_TOOL_RULE_RX)
-
-		%do s=1 %to %sysfunc(countw(&indicators.));
-			%let ind=%scan(&indicators.,&s.);
-
-			%crosstab(&fltype._sud,&ind._SUD_DSRDR)
-			%crosstab(&fltype._sud,&ind._SUD_DSRDR_DGNS &ind._SUD_DSRDR_RX &ind._SUD_DSRDR)
-
-
-		%end; 
 
 	%end; ** end ne RX loop;
 
@@ -955,13 +1092,7 @@
 			where SUD_RX=1
 		) by tmsis_passthrough;
 
-		title2 "All RX line records marked as SUD_RX=1";
-
-		%crosstab(&fltype._sud,SUD_TOOL_RULE_RX); 
-
-
 	%end;
-
 
 %mend join_sud_rx;
 
@@ -1014,24 +1145,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Examine join to Facility codes (TOB, REV, PROC) - &fltype.";
-
-	%crosstab(&fltype._sud2,SUD_TOOL_RULE_FAC)
-
-	select * from connection to tmsis_passthrough
-	(select rev_cd, rev_cd_rule, SUD_TOOL_RULE_FAC from &fltype._sud2 where rev_cd_rule is not null limit 20);
-	
-	select * from connection to tmsis_passthrough
-	(select bill_type_cd_lkup, bill_type_cd_rule, SUD_TOOL_RULE_FAC from &fltype._sud2 where bill_type_cd_rule is not null limit 20);
-
-	%if &nproc. ne  %then %do p=1 %to &nproc.;
-
-		select * from connection to tmsis_passthrough
-		(select prcdr_&p._cd, prcdr_&p._cd_rule, SUD_TOOL_RULE_FAC from &fltype._sud2 where prcdr_&p._cd_rule is not null limit 20);
-
-	%end; 
-
-
 %mend join_sud_fac;
 
 %macro join_sud_prof(fltype);
@@ -1059,15 +1172,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Join of procedure codes to professional SUD service codes - &fltype.";
-
-	%crosstab(&fltype._sud3,RULE SUD_TOOL_RULE_PROF);
-	select * from connection to tmsis_passthrough
-	(select prcdr_1_cd, SUD_TOOL_RULE_PROF from &fltype._sud3 where SUD_TOOL_RULE_PROF is not null limit 20);
-	select * from connection to tmsis_passthrough
-	(select prcdr_1_cd, RULE, SUD_TOOL_RULE_PROF, srvc_plc_cd 
-     from &fltype._sud3 where SUD_TOOL_RULE_PROF in (1,2) and RULE = 4 limit 20);
-
 %mend join_sud_prof;
 
 %macro rollup(fltype, tbl=, rules=, dates=);
@@ -1078,7 +1182,6 @@
        Take the minimum of all dates - note some dates are at the header-level, but can still take minimum (this
        will just retain the same value). Create service date from these minimum date values.
        Take MAX of all SUD condition indicators.;
-
 	execute (
 		create temp table &fltype._rollup as 
 
@@ -1133,65 +1236,7 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Print of sample records to check assignment of srvc_date on rolled up claims - &fltype.";
-
-	select * from connection to tmsis_passthrough
-	(select srvc_dt %do d=1 %to %sysfunc(countw(&dates.));
-			   	       %let date=%scan(&dates.,&d.);
-					   ,&date.
-					%end;
-     from &fltype._rollup
-	 limit 20 );
-
-	 %let date1=%scan(&dates.,1);
-
-	 select * from connection to tmsis_passthrough
-	(select srvc_dt %do d=1 %to %sysfunc(countw(&dates.));
-				        %let date=%scan(&dates.,&d.);
-					   ,&date.
-					%end;
-	 from &fltype._rollup
-	 where &date1. is null
-	 limit 20 );
-	 %if %sysfunc(countw(&dates.)) = 3 %then %do;
-	    %let date1=%scan(&dates.,1);
-	 	%let date2=%scan(&dates.,2);
-
-		 select * from connection to tmsis_passthrough
-		(select srvc_dt %do d=1 %to %sysfunc(countw(&dates.));
-					        %let date=%scan(&dates.,&d.);
-						   ,&date.
-						%end;
-		 from &fltype._rollup
-		 where &date1. is null and &date2. is null
-		 limit 20 );
-
-	 %end;
-	 title2 "Frequencies of SUD_DSRDR indicators on rolled up claims - &fltype.";
-
-	%do s=1 %to %sysfunc(countw(&indicators.));
-       %let ind=%scan(&indicators.,&s.);
-
-	   %crosstab(&fltype._rollup, &ind._SUD_DSRDR)
-
-	%end; 
-
-	title2 "Frequencies and prints for SUD_TOOL_RULE values - &fltype.";
-
-	%crosstab(&fltype._rollup, SUD_TOOL_RULE_HDR);
-
-	select * from connection to tmsis_passthrough
-	(select SUD_TOOL_RULE_HDR %do r=1 %to %sysfunc(countw(&rules.));
-			   	                 %let rule=%scan(&rules.,&r.);
-								 ,&rule.
-							  %end;
-							  %do s=1 %to %sysfunc(countw(&indicators.));
-			       				 %let ind=%scan(&indicators.,&s.);
-								 ,&ind._SUD_RULE
-						      %end;
-	 from &fltype._rollup
-	 limit 20); 
-
+	
 	 ** Finally roll up again across claims with same service date values;
 
 	execute (
@@ -1215,11 +1260,6 @@
 				 srvc_dt
 
 	) by tmsis_passthrough;
-
-	title2 "Frequencies for SUD_TOOL_RULE value (after rollup to service date level) - &fltype.";
-
-	%crosstab(&fltype._rollup2, SUD_TOOL_RULE_HDR);
-	%crosstab(&fltype._rollup2, ALCHL_SUD_RULE); 
 
 %mend rollup;
 
@@ -1268,7 +1308,8 @@
 				  %end;
 
 		  from &fltype.&tbl.
-		  where SUD_DGNS=1
+		  where SUD_DGNS=1 
+                %if "&fltype." = "LT" %then %do; and inpat=0 %end; 
 
 		  group by submtg_state_cd,
 		           &fltype._link_key,
@@ -1279,24 +1320,6 @@
 		%end;
 
   	) by tmsis_passthrough;
-
-	title2 "Print of sample records to check assignment of srvc_date on rolled up claims (diagnosis code only method) - &fltype.";
-
-	select * from connection to tmsis_passthrough
-	(select srvc_dt %do d=1 %to %sysfunc(countw(&dates.));
-			   	       %let date=%scan(&dates.,&d.);
-					   ,&date.
-					%end;
-     from &fltype._rollup_dgns
-	 limit 20 );
-
-	%if &fltype. = OT %then %do;
-		title2 "QC selection to keep outpatient claims for diagnosis code only method - &fltype.";
-
-		%crosstab(&fltype._rollup_dgns,srvc_plc_cd)
-
-	%end; 
-
 
 %mend rollup_dgns_only;
 
@@ -1353,15 +1376,6 @@
 			 on a.rev_cd = r.rev_cd
 
 	) by tmsis_passthrough;
-
-	title2 "Examine join to inpatient records of SUD-specific procedure/rev codes - &fltype.";
-
-	%crosstab(&fltype._inp_sud_nodx,INP_SUD)
-	%crosstab(&fltype._inp_sud_nodx,INP_OUD)
-
-	%if &fltype. = OT %then %do;
-		%crosstab(&fltype._inp_sud_nodx,srvc_plc_cd);
-	%end; 
 
 %mend sud_inp_nodx;
 
@@ -1439,24 +1453,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Examine join of outpatient/residential claims to SUD-specific rev/POS/prcdr codes lists - &fltype.";
-
-	%crosstab(&fltype._outp_sud_nodx,OUTP_SUD);
-	%crosstab(&fltype._outp_sud_nodx,OUTP_OUD);
-
-	%crosstab(&fltype._outp_sud_nodx,rev_cd,wherestmt=%nrstr(where rev_cd_sud=1));
-
-	%if &fltype.=OT %then %do;
-		%crosstab(&fltype._outp_sud_nodx,srvc_plc_cd,wherestmt=%nrstr(where srvc_plc_cd_sud=1));
-
-		select * from connection to tmsis_passthrough
-		(select prcdr_1_cd, prcdr_2_cd from &fltype._outp_sud_nodx where prcdr_cd_sud=1 limit 20);
-
-		title2 "All procedure codes marked as OUD - &fltype.";
-
-		%crosstab(&fltype._outp_sud_nodx,prcdr_1_cd,wherestmt=%nrstr(where OUTP_OUD=1));
-	%end;
-
 	** Now must rollup to the header-level to get one service date on each claim, and take MAX
 	   of OUTP_SUD and OUTP_OUD;
 
@@ -1496,16 +1492,6 @@
 
 
   	) by tmsis_passthrough;
-
-	title2 "Print of sample records to check assignment of srvc_date on rolled up claims (no diagnosis method) - &fltype.";
-	select * from connection to tmsis_passthrough
-	(select srvc_dt %do d=1 %to %sysfunc(countw(&dates.));
-			   	       %let date=%scan(&dates.,&d.);
-					   ,&date.
-					%end;
-     from &fltype._outp_sud_nodx2
-	 limit 20 ); 
-
 
 %mend sud_outp_nodx;
 
@@ -1566,7 +1552,6 @@
 %mend unique_sud_claims;
 
 %macro pull_sud_claims(fltype);
-
 	** Join unique SUD link_keys back to raw lines to pull all SUD claims with raw cols to be
        able to assign to setting/service types.
        NOTE now that we are counting services, we will drop denied lines.
@@ -1710,6 +1695,9 @@
 					,%nrbquote('&setting') as SETTING
 				%end;
 
+				%if "&fltype." = "LT" %then %do;
+					,case when rev_cd in (&inpat_psych_rev.) then 1 else 0 end as rev_cd_inpat
+				%end;
 
 		from &fltype._SUD_FULL a
 
@@ -1736,87 +1724,14 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Join of procedure/NDC/rev codes on SUD claims to service types - &fltype.";
+	%if "&fltype." = "LT" %then %do;
 
-	%crosstab(&fltype._SUD_SRVC,NDC_HAS_SERVICE)
-	%crosstab(&fltype._SUD_SRVC,SERVICE_TYPE_NDC);
-	%crosstab(&fltype._SUD_SRVC,MAT_MED_CAT_NDC)
-	%crosstab(&fltype._SUD_SRVC,NDC_HAS_MAT)
-	%crosstab(&fltype._SUD_SRVC,NDC_HAS_SERVICE NDC_HAS_MAT);
+		title "Freq of rev_cds on LT lines identified as inpatient psych";
 
-	select * from connection to tmsis_passthrough
-	(select SERVICE_TYPE_NDC 			
-                 %do t=1 %to %sysfunc(countw(&service_inds.,'#'));
-					%let ind=%scan(&service_inds.,&t.,'#');
-					,TRT_SRVC_&ind._P
-				 %end;
-	from &fltype._SUD_SRVC
-	where SERVICE_TYPE_NDC is not null
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select MAT_MED_CAT_NDC			
-                 %do m=1 %to %sysfunc(countw(&mat_meds.,'#'));
-			   	     %let med=%scan(&mat_meds.,&m.,'#');
-					,MAT_&med.
-				 %end;
-	from &fltype._SUD_SRVC
-	where MAT_MED_CAT_NDC is not null
-	limit 25);
-
-	%if &nprocs.>0 %then %do;
-
-		%crosstab(&fltype._SUD_SRVC,PRCDR1_HAS_SERVICE)
-		%crosstab(&fltype._SUD_SRVC,SERVICE_TYPE_PRCDR1)
-		%crosstab(&fltype._SUD_SRVC,PRCDR1_HAS_MAT)
-		%crosstab(&fltype._SUD_SRVC,MAT_MED_CAT_PRCDR1)
-		%crosstab(&fltype._SUD_SRVC,PRCDR1_HAS_SERVICE PRCDR1_HAS_MAT)
-
-		select * from connection to tmsis_passthrough
-		(select SERVICE_TYPE_NDC, SERVICE_TYPE_REV, TRT_SRVC_TOT_P %do p=1 %to &nprocs.; ,SERVICE_TYPE_PRCDR&p. %end;  			
-	                %do t=1 %to %sysfunc(countw(&service_inds.,'#'));
-						%let ind=%scan(&service_inds.,&t.,'#');
-						,TRT_SRVC_&ind._P
-					 %end;
-		from &fltype._SUD_SRVC
-		where SERVICE_TYPE_PRCDR1 is not null
-		limit 25);
-
-		select * from connection to tmsis_passthrough
-		(select MAT_MED_CAT_NDC %do p=1 %to &nprocs.; ,MAT_MED_CAT_PRCDR&p. %end;  			
-	                %do m=1 %to %sysfunc(countw(&mat_meds.,'#'));
-			   	        %let med=%scan(&mat_meds.,&m.,'#');
-					     ,MAT_&med.
-				   %end;
-		from &fltype._SUD_SRVC
-		where MAT_MED_CAT_PRCDR1 is not null
-		limit 25);
+		%crosstab(&fltype._SUD_SRVC, rev_cd rev_cd_inpat, wherestmt=%str(where rev_cd_inpat=1))
 
 	%end;
 
-	%if &fltype. ne RX %then %do;
-
-		%crosstab(&fltype._SUD_SRVC,REV_HAS_SERVICE)
-		%crosstab(&fltype._SUD_SRVC,SERVICE_TYPE_REV)
-
-		select * from connection to tmsis_passthrough
-		(select SERVICE_TYPE_REV, TRT_SRVC_TOT_R 		
-	                %do t=1 %to %sysfunc(countw(&service_inds.,'#'));
-						%let ind=%scan(&service_inds.,&t.,'#');
-							,TRT_SRVC_&ind._R
-					 %end;
-		from &fltype._SUD_SRVC
-		where SERVICE_TYPE_REV is not null
-		limit 25);
-
-	%end;
-
-	%do t=1 %to %sysfunc(countw(&service_inds.,'#'));
-		%let ind=%scan(&service_inds.,&t.,'#');
-					
-		%crosstab(&fltype._SUD_SRVC,TRT_SRVC_&ind._P)
-
-	%end; 
 
 	** Roll up to the header-level, taking the MAX of all indicators,
 	   and creating the needed date vars to calculate one service date for the entire claim.
@@ -1902,6 +1817,11 @@
 				   ,max(SETTING) as SETTING
 				%end;
 
+				%if "&fltype." = "LT" %then %do;
+					,case when max(rev_cd_inpat)=1 then 'Inpatient' else 'Residential'
+						end as SETTING
+				%end;
+
 
 		from &fltype._SUD_SRVC
 		group by submtg_state_cd,
@@ -1910,24 +1830,6 @@
 
 	) by tmsis_passthrough;
 
-	** Print a sample of records where we have P and/or R records to check both are assigned;
-
-	title2 "Print of 10 records from the header-level rolled-up record to check creation of TRT_SRVC inds - &fltype.";
-
-	select * from connection to tmsis_passthrough
-	(select * from &fltype._SUD_SRVC_ROLLUP where TRT_SRVC_TOT_P>0 limit 10);
-
-	select * from connection to tmsis_passthrough
-	(select * from &fltype._SUD_SRVC_ROLLUP where TRT_SRVC_TOT_P=0 and TRT_SRVC_TOT_R>0 limit 10);
-
-	title2 "Frequencies of all MAT medication indicators - &fltype.";
-
-	%do m=1 %to %sysfunc(countw(&mat_meds.,'#'));
-		%let med=%scan(&mat_meds.,&m.,'#');
-
-		%crosstab(&fltype._SUD_SRVC_ROLLUP,MAT_&med.);
-
-	%end; 
 
 	** For OT only, must join on Setting created above. Delete the first three bytes (which is just the number,
 	   but is not needed anymore);
@@ -1986,17 +1888,6 @@
 			from &fltype._SUD_SRVC
 
 		) by tmsis_passthrough;
-
-		title2 "Print of sample records to QC assignment of begin/end dates for service days counting - &fltype.";
-
-		%do t=1 %to %sysfunc(countw(&services_count_days.,'#'));
-			%let ind=%scan(&services_count_days.,&t.,'#');
-
-			select * from connection to tmsis_passthrough
-			(select SERVICE_TYPE_NDC, rx_fill_dt, suply_days_cnt, bdt_ndc_&ind., edt_ndc_&ind. 
-            from &fltype._SUD_SRVC_DAYS where bdt_ndc_&ind. is not null limit 25);
-		%end;
-
 
 	%end; ** end RX loop;
 
@@ -2132,7 +2023,6 @@
 
 						%if &ind. = MAT %then %do;
 							/* identify whether any MAT and NOT 30/180, MAT 30, MAT 180 - create end date */
-
 							,case when (%do p=1 %to &nprocs.;
 								         %if &p. > 1 %then %do; or %end;
 								 	     (SERVICE_TYPE_PRCDR&p. = %nrbquote('&type.') 
@@ -2192,80 +2082,6 @@
 
 		) by tmsis_passthrough;
 
-
-		%do t=1 %to %sysfunc(countw(&services_count_days.,'#'));
-			%let ind=%scan(&services_count_days.,&t.,'#');
-
-			title2 "Print of sample records to QC assignment of begin/end dates for service days counting - &ind. - &fltype.";
-
-			select * from connection to tmsis_passthrough
-			(select TRT_SRVC_TOT_P_CLM, SERVICE_TYPE_NDC, SERVICE_TYPE_REV,
-                    &bdate1., &bdate2., &edate1., &edate2., bdt_ndc_&ind., edt_ndc_&ind. 
-            from &fltype._SUD_SRVC_DAYS where bdt_ndc_&ind. is not null limit 25);
-
-			select * from connection to tmsis_passthrough
-			(select TRT_SRVC_TOT_P_CLM, SERVICE_TYPE_NDC, SERVICE_TYPE_REV,
-                    &bdate1., &bdate2., &edate1., &edate2., bdt_ndc_&ind., edt_ndc_&ind. 
-            from &fltype._SUD_SRVC_DAYS where bdt_ndc_&ind. is not null and &bdate1. is null limit 25);
-
-			%if &nprocs. > 0 %then %do;
-
-				select * from connection to tmsis_passthrough
-				(select TRT_SRVC_TOT_P_CLM %do p=1 %to &nprocs.; ,SERVICE_TYPE_PRCDR&p. %end;
-	                    &bdate1_p., &bdate2_p., &edate1_p., &edate2_p., bdt_proc_&ind., edt_proc_&ind. 
-	            from &fltype._SUD_SRVC_DAYS where bdt_proc_&ind. is not null limit 25);
-
-				select * from connection to tmsis_passthrough
-				(select TRT_SRVC_TOT_P_CLM %do p=1 %to &nprocs.; ,SERVICE_TYPE_PRCDR&p. %end;
-	                    &bdate1_p., &bdate2_p., &edate1_p., &edate2_p., bdt_proc_&ind., edt_proc_&ind. 
-	            from &fltype._SUD_SRVC_DAYS where bdt_proc_&ind. is not null and &bdate1_p. is null limit 25);
-
-				%if &ind. = MAT %then %do;
-
-					title2 "Sample print of recoded days for MAT PROCs - &fltype.";
-
-					select * from connection to tmsis_passthrough
-					(select bdt_proc_&ind. %do p=1 %to &nprocs.; ,prcdr_&p._cd %end; 
-					        &edate1_p., &edate2_p., edt_proc_&ind._orig, edt_proc_&ind._30, edt_proc_&ind._180, edt_proc_&ind.
-					from &fltype._SUD_SRVC_DAYS where edt_proc_&ind._30 is not null or edt_proc_&ind._180 is not null 
-					limit 50 );
-
-					select * from connection to tmsis_passthrough
-					(select bdt_proc_&ind. %do p=1 %to &nprocs.; ,prcdr_&p._cd %end; 
-					        &edate1_p., &edate2_p., edt_proc_&ind._orig, edt_proc_&ind._30, edt_proc_&ind._180, edt_proc_&ind.
-					from &fltype._SUD_SRVC_DAYS where edt_proc_&ind._orig is not null and (edt_proc_&ind._30 is not null or edt_proc_&ind._180 is not null)
-					limit 50 );
-
-				%end;
-
-			%end;
-
-		%end;
-
-		%let ind=mat;
-
-
-		title2 "Sample print of recoded days for MAT NDCs - 30 days - &fltype.";
-
-		select * from connection to tmsis_passthrough
-		(select ndc_cd, SERVICE_TYPE_NDC, &bdate1., &bdate2., &edate1., &edate2., bdt_ndc_&ind., edt_ndc_&ind. 
-		from &fltype._SUD_SRVC_DAYS where ndc_cd in (&ndc30.)
-		limit 25 );
-
-		title2 "Sample print of recoded days for MAT NDCs - 77 days - &fltype.";
-
-		select * from connection to tmsis_passthrough
-		(select ndc_cd, SERVICE_TYPE_NDC, &bdate1., &bdate2., &edate1., &edate2., bdt_ndc_&ind., edt_ndc_&ind. 
-		from &fltype._SUD_SRVC_DAYS where ndc_cd in (&ndc77.) 
-		limit 25 );
-
-		title2 "Sample print of recoded days for MAT NDCs - 180 days - &fltype.";
-
-		select * from connection to tmsis_passthrough
-		(select ndc_cd, SERVICE_TYPE_NDC, &bdate1., &bdate2., &edate1., &edate2., bdt_ndc_&ind., edt_ndc_&ind. 
-		from &fltype._SUD_SRVC_DAYS where ndc_cd in (&ndc180.) 
-		limit 25 );
-	
 
 	%end; ** end ne RX loop;
 
@@ -2366,17 +2182,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Print of sample records from join of Inpatient/Residential dates to &indates.";
-
-	select * from connection to tmsis_passthrough
-	(select * from INP_RES_&indates.
- 	 where SERVICE30=1
-	 limit 50);
-
-	select * from connection to tmsis_passthrough
-	(select * from INP_RES_&indates.
- 	 where SERVICE30=0
-	 limit 50); 
 
 	 ** Now roll up to the bene-level, taking the max of SERVICE30;
 
@@ -2403,53 +2208,8 @@
 		from INP_RES_&indates._BENE
 		group by submtg_state_cd );
 
-	create table sasout.national_sud_&indates._30 as select * from connection to tmsis_passthrough
-		(select count(*) as nbenes,
-				sum(ANY_SERVICE30) as ANY_SERVICE30
-
-		from INP_RES_&indates._BENE );
-
 %mend inp_res_dates;
 
-%macro qc_pull_sud_claims(fltype);
-
-	** Join list of unique SUD claims to samp benes, then join those link_keys back to line-level
-       claims to get all SUD claims for each bene;
-
-	execute (
-		create temp table sampbenes_&fltype. as
-		select a.submtg_state_cd,
-		       a.msis_ident_num,
-			   a.BENE_GROUP,
-			   b.&fltype._link_key
-
-		from sampbenes a
-		     inner join
-			 &fltype._sud_unq_claims b
-
-		on a.submtg_state_cd = b.submtg_state_cd and
-		   a.msis_ident_num = b.msis_ident_num
-
-	) by tmsis_passthrough;
-
-	create table sampbenes_&fltype._claims as select * from connection to tmsis_passthrough (
-		select b.*,
-		       a.BENE_GROUP
-
-		from sampbenes_&fltype. a
-		     inner join
-			 &fltype.HL b
-
-		on a.submtg_state_cd = b.submtg_state_cd and
-		   a.msis_ident_num = b.msis_ident_num and
-		   a.&fltype._link_key = b.&fltype._link_key
-
-		order by b.submtg_state_cd,
-		         b.msis_ident_num,
-				 b.&fltype._link_key  ) ;
-
-
-%mend qc_pull_sud_claims;
 
 /* Macro frequency_strat to run stratified frequencies 
       ds=input dataset
@@ -2502,7 +2262,6 @@
 
 
 %mend frequency_strat;
-
 /* Macro crosstab to run crosstab (with percents) - assumes numeric input
    Macro parms:
       ds=input dataset
@@ -2519,30 +2278,14 @@
 				    %let col=%scan(&cols.,&i.);
 					&col.,
                   %end;
-				  count,
-			   100.0*(a.count / b.totcount)::decimal(3,2) as pct
-				
-
-		from (select %do i=1 %to %sysfunc(countw(&cols.));
-				    	%let col=%scan(&cols.,&i.);
-			         	%if &i. > 1 %then %do; , %end; &col.
-                  	 %end;
-                     ,count(*) as count
-					 ,max(1) as dummy
+				  sum(1) as count
 
               from &ds. &wherestmt.
               group by %do i=1 %to %sysfunc(countw(&cols.));
 				    	   %let col=%scan(&cols.,&i.);
 			         	   %if &i. > 1 %then %do; , %end; &col.
-                       %end;) a
-
-		      inner join
-
-			 (select count(*) as totcount, 1 as dummy from &ds. &wherestmt.) b
-
-			 on a.dummy = b.dummy
-
-		order by %do i=1 %to %sysfunc(countw(&cols.));
+                       %end;
+			order by %do i=1 %to %sysfunc(countw(&cols.));
 				    %let col=%scan(&cols.,&i.);
 			         %if &i. > 1 %then %do; , %end; &col.
                   %end; );

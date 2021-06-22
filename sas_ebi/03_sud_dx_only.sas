@@ -16,9 +16,33 @@
 
 %macro SUD_DX_ONLY;
 
-	** Assign benes to conditions based on ONE inpatient claim (IP or OT) or TWO outpatient/residential claims (LT or OT).
-	   First stack the IP and OT (POS=21 or 51 only) and take the MAX across all condition indicators.
+	** Assign benes to conditions based on:
+		   - ONE inpatient claim (IP, OT, LT inpat psych) or
+           - TWO outpatient/residential claims (LT or OT).
+
+	   First identify inpat psych on LT, then stack the IP, OT (POS=21 or 51 only), LT inpat psych,
+          and take the MAX across all condition indicators.
 	   Subset to SUD_DGNS=1;
+
+	execute (
+		create temp table LTHL_IP as
+
+		select *
+		      ,max(rev_cd_inpat) over (partition by lt_link_key) as inpat
+
+		from (
+
+			select *
+			       ,case when rev_cd in (&inpat_psych_rev.) then 1 else 0 end as rev_cd_inpat
+
+			from LTHL2 ) 
+
+	) by tmsis_passthrough;
+
+	title "DX only assignment: Freq of rev_cds on LT lines identified as inpatient psych";
+
+	%crosstab(LTHL_IP, rev_cd rev_cd_inpat, wherestmt=%str(where rev_cd_inpat=1))
+	%crosstab(LTHL_IP, inpat)
 
 	execute (
 		create temp table inp_claims as
@@ -42,6 +66,17 @@
 		from OTHL_labt2
         where srvc_plc_cd in ('21','51') and SUD_DGNS=1 )
 
+		union all
+
+		(select submtg_state_cd, 
+		       msis_ident_num
+			   %do s=1 %to %sysfunc(countw(&indicators.));
+			       %let ind=%scan(&indicators.,&s.);
+				   ,&ind._SUD_DSRDR_DGNS
+				%end;
+		from LTHL_IP
+        where inpat=1 and SUD_DGNS=1 )
+
 	) by tmsis_passthrough;
 
 	** Take MAX to get to bene level;
@@ -64,10 +99,10 @@
 	** Now must identify conditions based on TWO claims on different service dates from
 	   outpatient or residential - note must first create service date (using same rule as in
 	   tool 1), then count unique service dates for each condition.
-	   For OT we will need to subset to POS != 21, 51;
+	   For OT we will need to subset to POS != 21, 51, for LT to inpat=0;
 
 	%rollup_dgns_only(LT, 
-                      tbl=HL2,
+                      tbl=HL_IP,
                       dates=srvc_endg_dt);
 
 	%rollup_dgns_only(OT, 
@@ -185,21 +220,6 @@
 		   a.msis_ident_num = b.msis_ident_num
 
 	) by tmsis_passthrough;
-
-	title2 "Creation of indicators/counts for method using diagnosis codes only";
-
-	%crosstab(BENE_SUD_DX_ONLY,CNT_SUD_DX_ONLY);
-	%crosstab(BENE_SUD_DX_ONLY,POP_SUD_DX_ONLY);
-	%crosstab(BENE_SUD_DX_ONLY,SUD_PLYSBSTNCE_DX_ONLY PLYSBSTNCE_SUD_DSRDR_DGNS1 PLYSBSTNCE_SUD_DSRDR_DGNS_OUTP CNT_SUD_DX_ONLY)
-
-	%do s=1 %to %sysfunc(countw(&indicators.));
-		%let ind=%scan(&indicators.,&s.);
-
-		%crosstab(BENE_SUD_DX_ONLY,SUD_&ind._DX_ONLY)
-		%crosstab(BENE_SUD_DX_ONLY,&ind._SUD_DSRDR_DGNS1 &ind._SUD_DSRDR_DGNS_OUTP SUD_&ind._DX_ONLY)
-
-	%end; 
-	 
 
 
 %mend SUD_DX_ONLY;
