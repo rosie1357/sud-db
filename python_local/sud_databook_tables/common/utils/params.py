@@ -45,3 +45,8 @@ OUTFILE_OUD = lambda year: f"SUD DB Tables (OUD) ({year}) - {DATE_NOW}.xlsx"
 OUTFILE_PYEAR = lambda year: f"SUD DB Tables ({year}) - Prior Year Comparisons - {DATE_NOW}.xlsx"
 
 TOTALS_DS = 'state_sud_methods'
+
+# list of states to exclude based on data quality (current and prior year), set to empty list if no states excluded
+
+DQ_STATES = []
+DQ_STATES_PYEAR = []

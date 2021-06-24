@@ -3,6 +3,7 @@ import pandas as pd
 from ..tasks.data_transform import convert_fips
 from ..tasks.small_cell_suppress import small_cell_suppress
 from common.utils.decorators import add_op_suffix
+from common.utils.params import FIPS_NAME_MAP
 
 
 class BaseDataClass():
@@ -17,11 +18,12 @@ class BaseDataClass():
         totals_ds str: name of SAS dataset with totals
         workbook excel obj: template to write to
         use_sud_ds list: list of any SAS datasets read in for given table that should use SUD only (do not append _op suffix)
+        dq_state_excl list: list of states to exclude for DQ reasons
 
 
     """
     
-    def __init__(self, year, sas_dir, totals_ds, table_type, workbook, use_sud_ds):
+    def __init__(self, year, sas_dir, totals_ds, table_type, workbook, use_sud_ds, dq_states_excl):
 
         self.year = year 
         self.sas_dir = sas_dir
@@ -29,6 +31,7 @@ class BaseDataClass():
         self.table_type = table_type 
         self.workbook = workbook
         self.use_sud_ds = use_sud_ds
+        self.dq_states_excl = dq_states_excl
         
         # assign defaults that can be overwritten with table-specific params with creation of each TableClass
 
@@ -49,6 +52,10 @@ class BaseDataClass():
     def read_sas_data(self, filename=None, **kwargs):
 
         df = pd.read_sas(self.sas_dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1')
+
+        # drop any states identified as DQ exclude
+
+        df = df.loc[~df['submtg_state_cd'].isin(self.dq_states_excl)]
 
         if 'copies' in kwargs.keys():
 
@@ -79,3 +86,22 @@ class BaseDataClass():
         df = small_cell_suppress(df, tot_cols)
 
         return df.rename(columns = {f"{col}" : f"{col}_base" for col in tot_cols})
+
+    def fill_dq_unusable(self, df):
+        """
+        Method fill_dq_unusable to take input df, add rows for DQ unusable states if they do not exist, and fill with DQ
+        
+        """
+
+        # identify any states marked as DQ and create dummy df with one rec per state - merge on so the state recs are there if they were not before
+
+        dq_state_names_excl = [FIPS_NAME_MAP.get(state) for state in self.dq_states_excl]
+
+        df = df.merge(pd.DataFrame(data = dq_state_names_excl, columns = ['state']), left_on='state', right_on='state', how='outer')
+
+        df.loc[df['state'].isin(dq_state_names_excl)] = df.loc[df['state'].isin(dq_state_names_excl)].fillna('DQ')
+
+        return df
+
+
+

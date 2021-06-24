@@ -78,8 +78,6 @@ class TableClassWideTransform(TableClass):
 
             df = base_df.merge(num_df[self.index_cols + self.group_cols + ['numer']], left_on=join_cols, right_on=join_cols, how='left').fillna(0)
 
-            #wide = df.loc[eval(f"df.{self.numer_col} {self.numer_value}")].pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
-
         wide = df.pivot_table(index=self.index_cols, columns=self.group_cols, values=self.values_transpose)
 
         # rename columns based on concatenation with underscore separator of current indices (tuples, which contain params passed above for "columns" and "values")

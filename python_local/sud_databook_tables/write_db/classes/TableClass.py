@@ -1,4 +1,6 @@
+from typing import DefaultDict
 import pandas as pd
+import numpy as np
 
 from .BaseDataClass import BaseDataClass
 from ..tasks.national_values import get_national_values
@@ -7,7 +9,7 @@ from ..tasks.small_cell_suppress import small_cell_suppress, suppress_match_nume
 from ..tasks.write_excel import read_template_col, write_sheet
 from common.utils.text_funcs import stat_list, create_text_list
 from common.utils.df_funcs import list_dup_cols
-from common.utils.params import STATE_LIST
+from common.utils.params import STATE_LIST, FIPS_NAME_MAP
 
 
 class TableClass(BaseDataClass):
@@ -117,6 +119,7 @@ class TableClass(BaseDataClass):
                 - if have indiv_denoms, must then loop over each pair of num/denom and suppress num if denom is suppressed based on second lowest suppression
             - Get national sum of all counts
             - Create percents, will be suppressed if numerator is already suppressed
+            - Fill any states excluded for DQ concerns with DQ
             - Fill all nan values with period
 
         params:
@@ -135,6 +138,9 @@ class TableClass(BaseDataClass):
         df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum').reset_index(drop=True)], ignore_index=True)
 
         df = create_stats(df = df, numerators = self.numerators, denominators = self.denominators, prop_mult = self.prop_mult)
+
+        if len(self.dq_states_excl) > 0:
+            df = self.fill_dq_unusable(df = df)
 
         return df.fillna('.').reset_index(drop=True)
 
@@ -175,7 +181,7 @@ class TableClass(BaseDataClass):
 
         to_table = self.prepped_df.merge(order_df, left_on='state', right_on='state', how='outer', indicator = '_merged')
 
-        assert set(to_table['_merged']) == set(['both']), f"ERROR: All values of state not on both template and table_df for {self.sheet_num} - FIX"
+        assert set(to_table['_merged']) == set(['both']), f"ERROR: Values of state not on both table and template {self.sheet_name} - FIX"
 
         # write to sheet
 

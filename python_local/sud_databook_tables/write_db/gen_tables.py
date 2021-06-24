@@ -1,5 +1,5 @@
 
-from common.utils.params import SASDIR, TOTALS_DS
+from common.utils.params import SASDIR, TOTALS_DS, DQ_STATES, DQ_STATES_PYEAR
 from .classes.BaseDataClass import BaseDataClass
 from .classes.TableClass import TableClass
 from .classes.TableClassWideTransform import TableClassWideTransform
@@ -46,7 +46,7 @@ def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, p
 
             # create table class, set initial attributes, add sheet_num to pass with kwargs to set class attributes
 
-            _tableclass = eval(use_class)(year, SASDIR(year), TOTALS_DS, table_type, workbook, use_sud_ds, **dict(kwargs, sheet_num=sheet_num))
+            _tableclass = eval(use_class)(year, SASDIR(year), TOTALS_DS, table_type, workbook, use_sud_ds, DQ_STATES, **dict(kwargs, sheet_num=sheet_num))
 
             _tableclass.set_initial_attribs()
 
@@ -67,7 +67,7 @@ def gen_tables(*, year, workbook, table_details, config_sheet_num, table_type, p
 
                 pyear = int(year)-1
 
-                _tableclass_p = eval(use_class)(pyear, SASDIR(pyear), TOTALS_DS, table_type, workbook, use_sud_ds, **dict(kwargs, sheet_num=sheet_num))
+                _tableclass_p = eval(use_class)(pyear, SASDIR(pyear), TOTALS_DS, table_type, workbook, use_sud_ds, DQ_STATES_PYEAR, **dict(kwargs, sheet_num=sheet_num))
 
                 _tableclass_p.set_initial_attribs()
 

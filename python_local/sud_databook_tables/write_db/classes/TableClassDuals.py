@@ -28,6 +28,7 @@ class TableClassDuals(TableClass):
     def read_sas_duals(self, filename):
         """
         Method read_sas_duals to do the following (modified version of read_sas):
+            - drop any states marked as DQ exclude
             - subset to subset_col and subset_value (duals only)
             - Get total and join back on to get total dual count (first col given in self.count_cols)
             - subset to numer population (SUD only) and rename count to name of second col given in self.count_cols
@@ -35,6 +36,8 @@ class TableClassDuals(TableClass):
         """
 
         df = pd.read_sas(self.sas_dir / f"{filename}.sas7bdat", encoding = 'ISO-8859-1')
+        df = df.loc[~df['submtg_state_cd'].isin(self.dq_states_excl)]
+
         df = df.loc[eval(f"df.{self.subset_col} {self.subset_value}")]
 
         grouped = df.groupby(self.group_cols)
@@ -85,5 +88,8 @@ class TableClassDuals(TableClass):
 
         df = create_stats(df = df, numerators = [self.numerator] * len(self.denominators), denominators = self.denominators, 
                           prop_mult = self.prop_mult, stat_name_use=1)
+
+        if len(self.dq_states_excl) > 0:
+            df = self.fill_dq_unusable(df = df)
 
         return df.fillna('.').reset_index(drop=True)
