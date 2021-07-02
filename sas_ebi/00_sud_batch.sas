@@ -59,8 +59,8 @@ options nomlogic nomprint minoperator errorabend;
 
 %put leap for &year. = &leap. with &totdays. days;
 
-%let tool1_excel = %str(50139 SUD Code set_2020 Revision_Reformatted.xlsx);
-%let db_excel = %str(T-MSIS data book code lists_2019.xlsx);
+%let tool1_excel = %str(50139 SUD Code set_2020_Final.xlsx);
+%let db_excel = %str(T-MSIS data book code lists_2020.xlsx);
 
 ** Run the tool 1 macro to read from tool 1 excel with codes and create text files with text to create tables;
 
