@@ -20,12 +20,7 @@
 
 	%macro readtext(infile);
 
-		title2 "Create of &infile. lookup table";
-
 		%include "&indata/&infile..txt";
-
-		select * from connection to tmsis_passthrough
-		(select * from &infile. limit 10); 
 
 	%mend readtext;
 
@@ -61,6 +56,10 @@
 
 	) by tmsis_passthrough;
 
+	title "Diagnosis codes by category";
+
+	%crosstab(codes_sud2, desc_short)
+
 	** Do the same recoding for RX;
 
 	execute (
@@ -79,12 +78,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Examine service type crosswalk";
-
-	%crosstab(codes_services,SERVICE_TYPE);
-	%crosstab(codes_services,MAT_TYPE);
-	%crosstab(codes_services,MAT_MED_CAT); 
-
 	** Read in the DE, identifying those with full benefits in all months of enrollment to keep, and
 	   with age > 1 or < 12 to drop.
 	   To identify months with enrollment, use CHIP_CD=1. For RI and WY which do not populate CHIP_CD,
@@ -96,16 +89,11 @@
 	   TO FIX PA CODING OF ELIGIBILITY GROUP CODE = 71 AS EXPANSION GROUP, RECODE A VALUE OF 71 TO 72 (SO CAN BE
 	   INCLUDED AS EXPANSION);
 
-
 	execute (
 		create temp table DE_BASE as
-		select submtg_state_cd,
-		       msis_ident_num,
-			   de_fil_dt,
+		select %recode_state_codes(prefix=a)
+			   ,de_fil_dt,
 			   da_run_id,
-
-			   /* For additional analysis and tables - assign to full or partial benefit dual based on 
-			      latest dual code */
 
 			   DUAL_ELGBL_CD_LTST,
 			   case when DUAL_ELGBL_CD_LTST in ('02','04','08') then 1
@@ -127,7 +115,6 @@
 				  ,RSTRCTD_BNFTS_CD_&m.
 			   %end;
 
-			   /* First identify months of enrollment (from CHIP_CD or ELGBLTY_GRP_CD) */
 
 			   %do m=1 %to 12;
 			   	  %if &m.<10 %then %let m=0&m.;
@@ -152,8 +139,11 @@
 				,case when %do m=1 %to 12;
 			   	              %if &m.<10 %then %let m=0&m.;
 							  %if &m. > 1 %then %do; or %end;
-							  (ENROLLED_&m.=1 and (submtg_state_cd not in ('05','16','46') and RSTRCTD_BNFTS_CD_&m. not in ('1','4','7','A','B','D'))) or
-							  (ENROLLED_&m.=1 and (submtg_state_cd in ('05','16','46') and RSTRCTD_BNFTS_CD_&m. not in ('1','7','A','B','D')))
+							  (&m. < 5 and ENROLLED_&m.=1 and (submtg_state_cd not in ('05','16','46') and RSTRCTD_BNFTS_CD_&m. not in ('1','4','7','A','B','D'))) or
+							  (&m. < 5 and ENROLLED_&m.=1 and (submtg_state_cd in ('05','16','46') and RSTRCTD_BNFTS_CD_&m. not in ('1','7','A','B','D'))) or
+
+							  (&m. >= 5 and ENROLLED_&m.=1 and (submtg_state_cd not in ('05','16','46') and RSTRCTD_BNFTS_CD_&m. not in ('1','4','5','7','A','B','D'))) or
+							  (&m. >= 5 and ENROLLED_&m.=1 and (submtg_state_cd in ('05','16','46') and RSTRCTD_BNFTS_CD_&m. not in ('1','5','7','A','B','D')))
 
 
 							%end;
@@ -170,8 +160,6 @@
 						then 1 else 0
 						end as rstrctd_bnfts_cd_null
 
-				/* Create age as of 12/31, and put into three age categories (child, adult, aged) */
-
 				,birth_dt
 				,floor(datediff(day,birth_dt,to_date(%nrbquote('31 12 &year.'),'dd mm yyyy'))/365.25) as age
 				,case when birth_dt is null then 1 else 0
@@ -182,9 +170,6 @@
 					  when age >= 65 then 3
 					  else null
 					  end as agecat
-
-				/* Assign each monthly value of eligibility group code to one of the six categories (1-6), and
-				   create monthly indicators to sum and calculate group with most number of months for assignment */
 
 				%do m=1 %to 12;
 			   	    %if &m.<10 %then %let m=0&m.;
@@ -198,8 +183,6 @@
 					%end;
 				%end;
 
-				/* Also create a monthly value of 1-5 (excluding CHIP) if we need to take the latest value in the 
-				   event of a tie, and also to count the number of months in any of our needed categories */
 
 				%do m=1 %to 12;
 			   	    %if &m.<10 %then %let m=0&m.;
@@ -213,7 +196,6 @@
 						  end as ELGBLTY_&m.
 				%end;					   
 
-				/* Now loop over each category and count the number of months in each */
 
 				%do c=1 %to 6;
 
@@ -226,10 +208,6 @@
 
 				 %end;
 
-				 /* For categories 1-5, calculate the category with the highest number of months. If
-				    there is a tie, use the latest. If there are zero months in any of these categories but
-				    there ARE months in category 6 (CHIP), drop the bene (CHIP only). If there are zero months in any
-				    category, put the bene into Unknown. */
 
 				%do c=1 %to 5;
 
@@ -243,12 +221,6 @@
 						 end as ELGBLTY_GRP_CAT_&c.
 
 				%end;
-
-				/* Now create one final value for eligibility group. Use the value assigned above if there was assignment.
-				   If none of the above were assigned, check why:
-				      - If eligibility group is ALWAYS unknown (so _LTST value is null) put into Unknown (we will call 0). 
-				      - Otherwise if there is a tie, use latest of the categories 1-5. 
-				      - Otherwise if all months are in CHIP, will drop. */
 
 				,case %do c=1 %to 5;
 				          when ELGBLTY_GRP_CAT_&c. = 1 
@@ -268,8 +240,6 @@
 
 						   else null
 						   end as ELGBLTY_GRP_CAT
-
-				/* Additional DISABLED col for 2018 */
 
 				%macro disabled(mo);
 
@@ -299,7 +269,6 @@
 					  else null
 					  end as age_ge65
 
-				/* Loop over the two values to count the months in each */
 
 				%do d=0 %to 1;
 
@@ -312,8 +281,6 @@
 
 				 %end;
 
-				 /* Identify majority of months - if tie assign to LTST */
-
 				 ,case when NMOS_DISABLED0 < NMOS_DISABLED1
 				       then 1
 					   when NMOS_DISABLED0 > NMOS_DISABLED1
@@ -325,9 +292,7 @@
 					   else null
 					   end as DISABLED_YR
 
-
-
-		from cms_prod.data_anltcs_taf_ade_base_vw 
+		from cms_prod.data_anltcs_taf_ade_base_vw a
 		where ltst_run_ind=1 and de_fil_dt=%nrbquote('&year.') and misg_elgblty_data_ind=0 and
 		      submtg_state_cd not in (&states_exclude.)
 
@@ -336,172 +301,6 @@
 	title2 "run IDs pulled in for DE";
 
 	%crosstab(DE_BASE,de_fil_dt da_run_id)
-
-	title2 "QC creation of DISABLED";
-
-	%crosstab(DE_BASE,DISABLED1_01 DISABLED0_01 NEW_ELGBLTY_GRP_CD_01 age_ge65)
-	%crosstab(DE_BASE,DISABLED_YR)
-
-	select * from connection to tmsis_passthrough
-	(select %do m=1 %to 12;	
-			    %if &m.<10 %then %let m=0&m.;
-				DISABLED1_&m.,
-			%end;
-			NMOS_DISABLED1
-	from DE_BASE
-	where NMOS_DISABLED1>0
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select %do m=1 %to 12;	
-			    %if &m.<10 %then %let m=0&m.;
-				DISABLED0_&m.,
-			%end;
-			NMOS_DISABLED0
-	from DE_BASE
-	where NMOS_DISABLED0>0
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select NMOS_DISABLED0, NMOS_DISABLED1, DISABLED1_LTST, DISABLED0_LTST, DISABLED_YR
-	from DE_BASE
-	where NMOS_DISABLED0 > NMOS_DISABLED1
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select NMOS_DISABLED0, NMOS_DISABLED1, DISABLED1_LTST, DISABLED0_LTST, DISABLED_YR
-	from DE_BASE
-	where NMOS_DISABLED0 < NMOS_DISABLED1
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select NMOS_DISABLED0, NMOS_DISABLED1, DISABLED1_LTST, DISABLED0_LTST, DISABLED_YR
-	from DE_BASE
-	where NMOS_DISABLED0 = NMOS_DISABLED1 and DISABLED_YR=1
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select NMOS_DISABLED0, NMOS_DISABLED1, DISABLED1_LTST, DISABLED0_LTST, DISABLED_YR
-	from DE_BASE
-	where NMOS_DISABLED0 = NMOS_DISABLED1 and DISABLED_YR=0
-	limit 25);
-
-	select * from connection to tmsis_passthrough
-	(select NMOS_DISABLED0, NMOS_DISABLED1, DISABLED1_LTST, DISABLED0_LTST, DISABLED_YR
-	from DE_BASE
-	where NMOS_DISABLED0 = 0 and NMOS_DISABLED1=0
-	limit 25);
-
-
-	title2 "QC creation of ENROLLED and NOT_FULL indicators on the DE";
-	
-	%crosstab(DE_BASE,NOT_FULL)
-	%crosstab(DE_BASE,ENROLLED_MOS)
-	%crosstab(DE_BASE,ENROLLED_MOS NOT_FULL)
-
-
-	select * from connection to tmsis_passthrough
-	(select NOT_FULL %do m=1 %to 12;
-			   	       %if &m.<10 %then %let m=0&m.;
-					   ,CHIP_CD_&m. ,RSTRCTD_BNFTS_CD_&m.
-					 %end;
-	from DE_BASE
-	where submtg_state_cd not in ('44','56') and NOT_FULL=1
-    limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select NOT_FULL %do m=1 %to 12;
-			   	       %if &m.<10 %then %let m=0&m.;
-					   ,CHIP_CD_&m. ,RSTRCTD_BNFTS_CD_&m.
-					 %end;
-	from DE_BASE
-	where submtg_state_cd not in ('44','56') and NOT_FULL=0
-    limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select NOT_FULL %do m=1 %to 12;
-			   	       %if &m.<10 %then %let m=0&m.;
-					   ,NEW_ELGBLTY_GRP_CD_&m. ,RSTRCTD_BNFTS_CD_&m.
-					 %end;
-	from DE_BASE
-	where submtg_state_cd in ('44','56') and NOT_FULL=1
-    limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select NOT_FULL %do m=1 %to 12;
-			   	       %if &m.<10 %then %let m=0&m.;
-					   ,NEW_ELGBLTY_GRP_CD_&m. ,RSTRCTD_BNFTS_CD_&m.
-					 %end;
-	from DE_BASE
-	where submtg_state_cd in ('44','56') and NOT_FULL=0
-    limit 20);
-
-	title2 "QC creation of age as of 12/31";
-
-	select * from connection to tmsis_passthrough
-	(select birth_dt, age from DE_BASE limit 20);
-
-	title2 "QC creation of agecat";
-
-	%crosstab(DE_BASE,agecat age);
-
-	title2 "QC creation of FULL_DUAL indicator";
-
-	%crosstab(DE_BASE,FULL_DUAL DUAL_ELGBL_CD_LTST)
-
-	title2 "QC creation of ELGBLTY_GRP_CAT values";
-
-	%crosstab(DE_BASE,ELGBLTY_GRP_CAT)
-	%crosstab(DE_BASE,ELGBLTY_GRP_CAT_1 ELGBLTY_GRP_CAT_2 ELGBLTY_GRP_CAT_3 ELGBLTY_GRP_CAT_4 ELGBLTY_GRP_CAT_5 ELGBLTY_GRP_CAT);
-
-	%do c=1 %to 5;
-
-		select * from connection to tmsis_passthrough
-		(select ELGBLTY_GRP_CAT, ELGBLTY_GRP_CAT_&c., NMOS_ELGBLTY_1, NMOS_ELGBLTY_2, NMOS_ELGBLTY_3, NMOS_ELGBLTY_4, NMOS_ELGBLTY_5, NMOS_ELGBLTY_6
-		 from DE_BASE
-		 where ELGBLTY_GRP_CAT_&c.=1
-		 limit 20);
-
-		select * from connection to tmsis_passthrough
-		(select ELGBLTY_GRP_CAT, ELGBLTY_GRP_CAT_&c., NMOS_ELGBLTY_1, NMOS_ELGBLTY_2, NMOS_ELGBLTY_3, NMOS_ELGBLTY_4, NMOS_ELGBLTY_5, NMOS_ELGBLTY_6
-		 from DE_BASE
-		 where ELGBLTY_GRP_CAT_&c.=0 and ELGBLTY_GRP_CAT>0
-		 limit 25);
-	
-		select * from connection to tmsis_passthrough
-		(select NMOS_ELGBLTY_1, NMOS_ELGBLTY_2, NMOS_ELGBLTY_3, NMOS_ELGBLTY_4, NMOS_ELGBLTY_5, NMOS_ELGBLTY_6
-		        %do m=1 %to 12;
-			   	    %if &m.<10 %then %let m=0&m.;
-					,NEW_ELGBLTY_GRP_CD_&m.
-				%end;
-		 from DE_BASE
-		 where NMOS_ELGBLTY_&c.>0
-		 limit 20);
-
-	%end;
-
-	select * from connection to tmsis_passthrough
-	(select ELGBLTY_GRP_CAT,  NMOS_ELGBLTY_1, NMOS_ELGBLTY_2, NMOS_ELGBLTY_3, NMOS_ELGBLTY_4, NMOS_ELGBLTY_5, NMOS_ELGBLTY_6
-     from DE_BASE
-	 where ELGBLTY_GRP_CAT = 6
-	 limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select ELGBLTY_GRP_CAT,  NMOS_ELGBLTY_1, NMOS_ELGBLTY_2, NMOS_ELGBLTY_3, NMOS_ELGBLTY_4, NMOS_ELGBLTY_5, NMOS_ELGBLTY_6
-     from DE_BASE
-	 where ELGBLTY_GRP_CAT = 0
-	 limit 20); 
-
-	** Create output freqs of null birth_dt and RBF for additional checks;
-
-	create table sasout.de_nulls as select * from connection to tmsis_passthrough
-	(select submtg_state_cd,
-	        count(*) as nrecs,
-	        sum(birth_dt_null) as birth_dt_null,
-			sum(rstrctd_bnfts_cd_null) as rstrctd_bnfts_cd_null
-
-	from DE_BASE
-	group by submtg_state_cd);
 
 	** Now subset to our population of interest
 	** EDIT: for those age_ge65, we are going to set DISABLED_YR=0 for ALL (to combine in tables);
@@ -526,59 +325,18 @@
 
 	) by tmsis_passthrough;
 
-	title2 "QC resetting of DISABLED_YR";
-	
-	%crosstab(DE_BASE, age_ge65 DISABLED_YR)
-
-	title2 "EXPANSION ADULTS WHO ARE EXCLUDED";
-
-	%crosstab(DE_BASE, ENROLLED_MOS,wherestmt=%nrstr(where ELGBLTY_GRP_CAT=5))
-
-	%crosstab(DE_BASE, AGE,wherestmt=%nrstr(where ELGBLTY_GRP_CAT=5))
-
-	%crosstab(DE_BASE, NOT_FULL,wherestmt=%nrstr(where ELGBLTY_GRP_CAT=5))
-
-	%crosstab(DE_BASE, RSTRCTD_BNFTS_CD_01,wherestmt=%nrstr(where ELGBLTY_GRP_CAT=5)) 
-
-	** From the full population before subsetting, create counts for attrition table;
-
-	execute (
-		create temp table attrition as
-		select submtg_state_cd,
-		       case when ENROLLED_MOS > 0 then 1 else 0
-			        end as ENROLLED,
-
-				case when ENROLLED = 1 and NOT_FULL=0 then 1 else 0
-				     end as ENROLLED_FULL,
-
-				case when ENROLLED_FULL = 1 and age >= 12 then 1 else 0
-					 end as ENROLLED_FULL_AGE,
-
-				case when ENROLLED_FULL_AGE and ELGBLTY_GRP_CAT != 6 then 1 else 0
-					 end as ENROLLED_FULL_AGE_NO6
-
-		from DE_BASE
-
-	) by tmsis_passthrough;
-
-	create table sasout.state_attrition as select * from connection to tmsis_passthrough
-	(select submtg_state_cd,
-	        count(*) as TOT,
-	        sum(ENROLLED) as ENROLLED,
-			sum(ENROLLED_FULL) as ENROLLED_FULL,
-			sum(ENROLLED_FULL_AGE) as ENROLLED_FULL_AGE,
-			sum(ENROLLED_FULL_AGE_NO6) as ENROLLED_FULL_AGE_NO6
-
-	 from attrition
-	 group by submtg_state_cd);
-
 	title2 "QC selection of benes for analytic population";
 
-	%crosstab(population,ENROLLED_MOS)
-	%crosstab(population,NOT_FULL)
-	%crosstab(population,age)
-	%crosstab(population,ELGBLTY_GRP_CAT)
+	%let cols=submtg_state_cd age not_full rstrctd_bnfts_cd_null ELGBLTY_GRP_CAT ENROLLED_MOS FULL_DUAL AGECAT DISABLED_YR;
 
+	%do c=1 %to %sysfunc(countw(&cols.));
+		%let col=%scan(&cols.,&c.);
+
+		title3 "crosstab of &col.";
+
+		%crosstab(population,&col.)
+
+	%end;
 
 	** Read in all claim types, joining header to line and keeping needed variables. Do a final
 	   join to the above population to only keep claims for those benes. Note for
@@ -587,7 +345,6 @@
 	   For diagnosis codes, they are not listed for IP because of the TN fix;
 
 	%readclaims(IP,
-
                 hvars=admsn_dt 
                       dschrg_dt 
                       bill_type_cd 
@@ -604,7 +361,6 @@
                             srvc_endg_dt_line);
 
 	%readclaims(LT,
-
 				hvars=admsn_dt
                       dschrg_dt
                       srvc_bgnng_dt
@@ -647,7 +403,6 @@
                             srvc_endg_dt_line); 
 
 	%readclaims(RX,
-	   
 			    hvars=rx_fill_dt,
 
 				lvars=ndc_cd suply_days_cnt,
@@ -657,6 +412,7 @@
 				lvars_nulls=ndc_cd
                             suply_days_cnt);
 
+
 	** Now for IP, LT and OT, join to all diagnosis codes to the SUD diagnosis code table to
 	   identify claims (header-level) with any SUD diagnosis code
 	   (Note the diagnosis code identification is used in methods 1 and 2 only);
@@ -664,6 +420,7 @@
 	%join_sud_dgns(IP, ndiag=12);
 	%join_sud_dgns(LT, ndiag=5);
     %join_sud_dgns(OT, ndiag=2);
+
 
 	** For IP and OT, must identify claims where ALL non-null procedure codes are lab/transport, to be dropped;
 

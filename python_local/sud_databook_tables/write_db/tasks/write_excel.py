@@ -60,7 +60,13 @@ def write_cell(row_col, col_value, sheet, column, col_name):
     cellref.value = col_value
     cellref.alignment = xl.styles.Alignment(horizontal='center')
 
-    if col_name.endswith('_stat'):
+    if col_name.endswith('_pctdiff'):
+        cellref.number_format = '###,##0.00'
+
+    elif col_name.endswith('_stat_diff'):
+        cellref.number_format = '###,##0.00'
+
+    elif '_stat' in col_name:
         cellref.number_format = '###,##0.0'
 
     else:

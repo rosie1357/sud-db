@@ -33,19 +33,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Sample print of OT records in Inpatient setting";
-
-	select * from connection to tmsis_passthrough
-	(select * 
-	 from OT_INPATIENT
-	 limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select *
-	 from OT_INPATIENT
-	 where srvc_endg_dt != srvc_endg_dt_line_max
-	 limit 20);
-
 	** Pull ALL IP SUD claims, rolling up to header-level and creating end_date;
 
 	execute (
@@ -67,19 +54,6 @@
 
 
 	) by tmsis_passthrough;
-
-	title2 "Sample print of IP records in Inpatient setting";
-
-	select * from connection to tmsis_passthrough
-	(select *
-	 from IP_INPATIENT
-	 limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select *
-	 from IP_INPATIENT
-	 where dschrg_dt != srvc_endg_dt_line_max
-	 limit 20);
 
 
 	** Pull ALL LT SUD claims, rolling up to header-level and creating end_date;
@@ -105,20 +79,6 @@
 			         srvc_endg_dt
 
 	) by tmsis_passthrough;
-
-	title2 "Sample print of LT records in Residential setting";
-
-	select * from connection to tmsis_passthrough
-	(select submtg_state_cd, srvc_endg_dt, srvc_endg_dt_line_max, dschrg_dt, end_date 
-	 from LT_RESIDENTIAL
-	 limit 20);
-
-	select * from connection to tmsis_passthrough
-	(select submtg_state_cd, srvc_endg_dt, srvc_endg_dt_line_max, dschrg_dt, end_date 
-	 from LT_RESIDENTIAL
-	 where srvc_endg_dt != srvc_endg_dt_line_max
-	 limit 20);
-
 
 	** For all three of the above, union and get all unique bene/date values - subset to those between
 	   01/01 and 12/01 (because cannot look at 30 days after end date if end after 12/01);
@@ -153,15 +113,6 @@
 		      date_cmp(end_date,%nrbquote('&year.-12-01')) in (0,-1)
 
 	) by tmsis_passthrough;
-
-	title2 "Month/Year of all distinct end_date values from Inpatient/Residential SUD records (on or before 12/01)";
-
-	select * from connection to tmsis_passthrough
-	(select end_date_mon, count(*) as count from
-		(select to_char(end_date,'YYYY-MM') as end_date_mon from INPATIENT_RES_DATES ) 
-	group by end_date_mon
-    order by end_date_mon); 
-
 
 	** Now must look at OT SUD claims marked as Outpatient, Home or Community, to compare beginning dates
 	   and see if within 30 days of ending date. 
@@ -219,19 +170,6 @@
 
 
 	) by tmsis_passthrough;
-
-	title2 "Print of sample records from join of Inpatient/Residential dates to Outpatient/Home/Community Dates";
-
-	select * from connection to tmsis_passthrough
-	(select * from INP_RES_DATES
- 	 where SERVICE30=1
-	 limit 50);
-
-	select * from connection to tmsis_passthrough
-	(select * from INP_RES_DATES
- 	 where SERVICE30=0
-	 limit 50);
-
 	 ** Now roll up to the bene-level, taking the max of SERVICE30, Also create a separate table to count the number of
 	    distinct link_key (claim header) values where SERVICE30=1;
 
@@ -288,16 +226,6 @@
 		   a.msis_ident_num = c.msis_ident_num
 
 	) by tmsis_passthrough;
-
-	 title2 "QC creation of N_CLAIMS30 (# of unique claims with ANY_SERVICE30)";
-
-	 select * from connection to tmsis_passthrough
-	 (select ANY_SERVICE30,
-             min(N_CLAIMS30) as N_CLAIMS30_MIN,
-	         max(N_CLAIMS30) as N_CLAIMS30_MAX
-
-	 from INP_RES_DATES_BENE
-	 group by ANY_SERVICE30); 
 
 	 ** Output stratified and national counts of ANY_SERVICE30, and count those where N_CLAIMS30>1;
 

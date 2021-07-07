@@ -44,7 +44,7 @@ def create_stats(*, df, numerators, denominators, prop_mult, suffix='_stat', sup
         suppress_value str: value indicating suppression, default = 'DS'
         stat_name_use int: based on numerator/denominator pairs, indicates which to use to name the created stat (with specified suffix)
             if 0, will use numerator (default)
-            if 0, will use denominator
+            if 1, will use denominator
 
     returns:
         df with stats added

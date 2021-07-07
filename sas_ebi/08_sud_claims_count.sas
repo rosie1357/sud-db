@@ -52,19 +52,6 @@
 
 	) by tmsis_passthrough;
 
-	** Look at summary stats for counts by bene - max must be 365;
-
-	title2 "Summary stats for # of services by bene (where counts are claim counts)";
-
-	select * from connection to tmsis_passthrough
-	(select count(*) as nbenes
-            %do i=1 %to %sysfunc(countw(&services_count_claims.));
-			   %let ind=%scan(&services_count_claims.,&i.);
-			   ,min(count_&ind.) as min_count_&ind.
-			   ,avg(count_&ind. :: float) as avg_count_&ind.
-			   ,max(count_&ind.) as max_count_&ind.
-			%end;
-	from SUD_SERVICES_COUNT_CLAIMS);
 
 	** Now get total counts of services and benes with each service;
 
@@ -169,17 +156,6 @@
 
 		) by tmsis_passthrough;
 
-		** Create sample output SAS tables to examine;
-
-		create table &ind._days_sample as select * from connection to tmsis_passthrough
-		(select submtg_state_cd, bdt_ndc_&ind., edt_ndc_&ind. 
-		        ,bdt_proc_&ind. ,edt_proc_&ind.
-				%do num=1 %to &totdays.;
-					,&ind._day&num.
-				%end;
-		 from SUD_SRVC_&ind.
-
-		 limit 50);
 
 		** Now summarize to the bene-level and count the number of unique days of each service type by taking the max of 
 		   each daily indicator and summing;
@@ -221,16 +197,6 @@
 			   a.msis_ident_num = b.msis_ident_num
 
 		) by tmsis_passthrough;
-
-		title2 "Summary stats for # of services by bene (where counts are day counts) - &ind.";
-
-		select * from connection to tmsis_passthrough
-		(select count(*) as nbenes
-	            ,min(TOT_DAYS_&ind.) as min_days_&ind.
-				,avg(TOT_DAYS_&ind. :: float) as avg_days_&ind.
-				,max(TOT_DAYS_&ind.) as max_days_&ind.
-
-		from SUD_SRVC_&ind._BENE);
 
 		** Now get total counts of service days and benes with each service;
 

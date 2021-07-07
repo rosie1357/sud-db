@@ -82,10 +82,6 @@
 
 	) by tmsis_passthrough;
 
-	title2 "Crosstab of SUD claim MC/FFS indicators - should be zero missing (all SUD benes must have SUD claims)";
-
-	%crosstab(population_sud_ffs_mc,CLAIM_MC CLAIM_FFS)
-
 	** Output count of benes with MC and FFS  (nationally and by state) - overall and opioids only;
 
 	%macro mccounts(suffix=);
@@ -119,46 +115,6 @@
 	%mccounts;
 	%mccounts(suffix=_OP);
 
-	****** !! ADDITIONAL QC: TAKE SAMPLE OF 25 BENES IDENTIFIED THROUGH SPECIFIC COMBINATIONS OF METHODS **** ;
-
-	%macro sampbenes(num,method1,method2,method3);
-
-		execute (
-			create temp table sampbenes&num. as
-			select submtg_state_cd, 
-			        msis_ident_num,
-					&num. as BENE_GROUP
-
-			 from population_sud
-			 where POP_SUD_TOOL1=&method1. and POP_SUD_DX_ONLY=&method2. and POP_SUD_NODX=&method3.
-			 limit 25
-
-		) by tmsis_passthrough;
-
-	%mend sampbenes;
-
-	%sampbenes(1,1,1,0);
-	%sampbenes(2,0,0,1);
-	%sampbenes(3,0,1,1);
-	%sampbenes(4,1,0,1);
-
-	execute (
-		create temp table sampbenes as
-
-		select * from sampbenes1
-		union
-		select * from sampbenes2
-		union
-		select * from sampbenes3
-		union
-		select * from sampbenes4
-
-	) by tmsis_passthrough;
-
-	%qc_pull_sud_claims(IP)
-	%qc_pull_sud_claims(LT)
-	%qc_pull_sud_claims(OT)
-	%qc_pull_sud_claims(RX);
 
 
 

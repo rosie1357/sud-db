@@ -17,8 +17,8 @@ libname tmsi_lib SASIORST PRESERVE_COL_NAMES=YES PRESERVE_TAB_NAMES=YES
 
 options linesize=220 center nosymbolgen mprint;
 
-%let basedir=/sasdata/users/&sysuserid/tmsisshare/prod/Task_4_and_5_TAF_analyses/009_SUD_DB_2019;
-%let year=2019;
+%let basedir=/sasdata/users/&sysuserid/tmsisshare/prod/Task_4_and_5_TAF_analyses/020_SUD_DB_2020;
+%let year=2020;
 
 ** List of states to exclude;
 
@@ -39,17 +39,17 @@ run;
 %include "&basedir./Programs/07_sud_claims_assign.sas";
 %include "&basedir./Programs/08_sud_claims_count.sas";
 %include "&basedir./Programs/09_sud_claims_progression.sas";
-
-%include "&basedir./Programs/98_sud_qc_outputs.sas";
 %include "&basedir./Programs/99_sud_inner_macros.sas";
 %include "&basedir./Programs/99_sud_macro_lists.sas";
 
-
-libname sasout "&basedir./Output";
-libname qcout "&basedir./Output/QC";
 %let indata=&basedir./Indata;
 
-options nomlogic nomprint minoperator;
+libname sasout "&basedir./Output";
+%let qcout=&basedir./Output/QC;
+libname qcout "&qcout.";
+%let indata=&basedir./Indata;
+
+options nomlogic nomprint minoperator errorabend;
 
 ** Determine if year is a leap year - if so, set ndays=366, otherwise set ndays=365;
 
@@ -59,11 +59,18 @@ options nomlogic nomprint minoperator;
 
 %put leap for &year. = &leap. with &totdays. days;
 
+%let tool1_excel = %str(50139 SUD Code set_2020_Final.xlsx);
+%let db_excel = %str(T-MSIS data book code lists_2020.xlsx);
+
+** Run the tool 1 macro to read from tool 1 excel with codes and create text files with text to create tables;
+
+%create_tool1_lookups(excel=&tool1_excel.);
+
 ** Run the macro to create the text files which have the text to create lookup tables of
    procedure, revenue, TOB and POS codes;
 
-%redshift_insert_sud_codes;
-%redshift_insert_mapping;
+%redshift_insert_sud_codes(excel=&db_excel.);
+%redshift_insert_mapping(excel=&db_excel.);
 
 
 proc sql;
@@ -106,6 +113,7 @@ proc sql;
 	%SUD_CLAIMS_PROGRESSION; 
 
 quit;
+
 
 proc printto;
 run;

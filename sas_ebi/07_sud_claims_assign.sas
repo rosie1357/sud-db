@@ -23,8 +23,8 @@
 	%pull_sud_claims(OT)
 	%pull_sud_claims(RX);
 
-	** For OT only, must assign to setting type based on specific claim values (all other file
-	   types are one setting only). Join to crosswalk of setting type (procedure, bill type, POS, and rev);
+	** For OT, must assign to setting type based on specific claim values. 
+	   Join to crosswalk of setting type (procedure, bill type, POS, and rev);
 
 
 		execute (
@@ -76,13 +76,6 @@
 
 		) by tmsis_passthrough;
 
-		title2 "Join of OT SUD claims to Setting lookup table";
-
-		%crosstab(OT_SUD_SETTING,PRCDR_HAS_SETTING SRVC_PLC_HAS_SETTING BILL_TYPE_HAS_SETTING REV_HAS_SETTING)
-		%crosstab(OT_SUD_SETTING,SETTING_PRCDR)
-		%crosstab(OT_SUD_SETTING,SETTING_SRVC_PLC)
-		%crosstab(OT_SUD_SETTING,SETTING_BILL_TYPE)
-		%crosstab(OT_SUD_SETTING,SETTING_REV);
 
 		** Roll up to header-level and use rules to assign setting based on the four mapped values.
 		   Also get date values to use in program 09 (when must pull claims with Setting = Inpatient and
@@ -219,17 +212,12 @@
 
 		) by tmsis_passthrough;
 
-		title2 "QC creation of SETTING for rolled-up claims - OT";
-
-		%crosstab(OT_SUD_SETTING_ROLLUP,SETTING);
-
-		%crosstab(OT_SUD_SETTING_ROLLUP,SETTING SETTING_PRCDR SETTING_SRVC_PLC SETTING_BILL_TYPE SETTING_REV rev_cd_any bill_type_cd_non_null,
-                  outfile=sasout.OT_SETTING_CROSSTAB);
-
 		** Now for all four file types, join line-level files to procedure code/NDC crosswalks to get service type.
 	       Must also pull in MAT_TYPE and MAT_MED_CAT.
-	       For all except OT, will assign Setting based on file type. For OT, will need to join on Settings calculated above
-		   (after rolling up to header-level);
+	       For IP and RX, will assign Setting based on file type. 
+		   For OT, will need to join on Settings calculated above (after rolling up to header-level).
+		   For LT, identify lines with a rev_cd that matches the list of inpatient psych rev codes, then assign
+		    the entire claim to Inpatient if ANY line has a matching rev code, otherwise Residential;
 
 		%crosswalk_service_type(IP, 
                                 nprocs=6, 
@@ -237,7 +225,6 @@
                                 dates=dschrg_dt srvc_endg_dt_line srvc_bgnng_dt_line)
 
 		%crosswalk_service_type(LT,
-		                        setting=Residential,
                                 dates=srvc_endg_dt);
 
 		%crosswalk_service_type(OT,
@@ -247,115 +234,6 @@
 		%crosswalk_service_type(RX,
 								setting=Outpatient,
                                 dates=rx_fill_dt);
-
-		**** ADDITIONAL QC PULL PROCEDURE CODES FOR OT CLAIMS WITH:
-				SETTING = COMMUNITY AND SERVICE TYPE = EMERGENCY SERVICES
-				SETTING = OUTPATIENT AND SERVICE TYPE = INPATIENT CARE  **** ;
-
-		execute (
-			create temp table OT_SUD_ADDITIONAL_QC as
-			select a.submtg_state_cd,
-			       a.msis_ident_num,
-			       a.OT_LINK_KEY,
-				   a.SETTING,
-				   a.srvc_plc_cd,
-				   a.bill_type_cd,
-				   b.prcdr_1_cd,
-				   b.SERVICE_TYPE_PRCDR1,
-				   b.rev_cd,
-				   b.SERVICE_TYPE_REV,
-				   b.ndc_cd,
-				   b.SERVICE_TYPE_NDC
-
-			from OT_SUD_SETTING_ROLLUP a
-			     left join
-				 OT_SUD_SRVC b
-
-			on a.OT_LINK_KEY = b.OT_LINK_KEY
-
-		) by tmsis_passthrough;
-
-	   %crosstab(OT_SUD_ADDITIONAL_QC,prcdr_1_cd,
-	              wherestmt=%nrstr(where SETTING='0. Community' and SERVICE_TYPE_PRCDR1='Emergency Services'),
-                  outfile=community_emer_services);
-
-	   %crosstab(OT_SUD_ADDITIONAL_QC,prcdr_1_cd,
-	              wherestmt=%nrstr(where SETTING='4. Outpatient' and SERVICE_TYPE_PRCDR1='Inpatient Care'),
-                  outfile=outpatient_inpat_services);
-
-	   %crosstab(OT_SUD_ADDITIONAL_QC,rev_cd,
-	              wherestmt=%nrstr(where SETTING='0. Community' and SERVICE_TYPE_REV='Emergency Services'),
-                  outfile=community_emer_services_r);
-
-	   %crosstab(OT_SUD_ADDITIONAL_QC,rev_cd,
-	              wherestmt=%nrstr(where SETTING='4. Outpatient' and SERVICE_TYPE_REV='Inpatient Care'),
-                  outfile=outpatient_inpat_services_r);
-
-		** Join the rolled up table back to the above to pull all lines from claims marked as the above;
-
-		execute (
-			create temp table OT_SUD_ADDITIONAL_QC2 as
-			select a.*,
-			       b.srvc_dt,
-			       b.TRT_SRVC_EMER_SRVCS,
-				   b.TRT_SRVC_INPAT
-
-
-			from OT_SUD_ADDITIONAL_QC a
-			     inner join
-				 OT_SUD_SRVC_ROLLUP b
-
-			on a.OT_LINK_KEY = b.OT_LINK_KEY
-
-
-		) by tmsis_passthrough;
-
-		create table community_emer_services_samp as select * from connection to tmsis_passthrough
-		(select * from OT_SUD_ADDITIONAL_QC2
-		where SETTING='0. Community' and TRT_SRVC_EMER_SRVCS=1
-		order by OT_LINK_KEY
-		limit 100);
-
-		create table outpatient_inpat_services_samp as select * from connection to tmsis_passthrough
-		(select * from OT_SUD_ADDITIONAL_QC2
-		where SETTING='4. Outpatient' and TRT_SRVC_INPAT=1
-		order by OT_LINK_KEY
-		limit 100);
-
-		** Also get all community support procedure codes for claims with emergency services. Must join
-		   header-level table to OT line-level file with community support procedure codes identified;
-
-		execute (
-			create temp table OT_SUD_ADDITIONAL_QC3 as
-			select a.OT_LINK_KEY,
-			       b.TRT_SRVC_EMER_SRVCS,
-				   c.prcdr_1_cd,
-				   c.SETTING_PRCDR
-
-
-			from (select * from OT_SUD_SETTING_ROLLUP where SETTING='0. Community') a
-			     left join
-				 OT_SUD_SRVC_ROLLUP b
-
-			     on a.OT_LINK_KEY = b.OT_LINK_KEY 
-
-				 left join
-				 OT_SUD_SETTING c
-
-				 on a.OT_LINK_KEY = c.OT_LINK_KEY		     
-
-
-		) by tmsis_passthrough;
-
-	   %crosstab(OT_SUD_ADDITIONAL_QC3,prcdr_1_cd,
-	              wherestmt=%nrstr(where TRT_SRVC_EMER_SRVCS=1 and SETTING_PRCDR='0. Community'),
-                  outfile=comm_proc_codes_emer);
-
-
-	   %crosstab(OT_SUD_ADDITIONAL_QC3,prcdr_1_cd,
-	              wherestmt=%nrstr(where TRT_SRVC_EMER_SRVCS=0 and SETTING_PRCDR='0. Community'),
-                  outfile=comm_proc_codes_notemer);
-
 
 		** Now stack all four files together;
 
@@ -376,10 +254,9 @@
 
 		) by tmsis_passthrough;
 
-		title2 "Freqs and crosstabs of SETTING for rolled-up claims for all four file types";
+		title "Crosstab of assigned setting for all file types";
 
-		%crosstab(SUD_SERVICES,SETTING);
-		%crosstab(SUD_SERVICES,FILE SETTING);
+		%crosstab(SUD_SERVICES, FILE SETTING)
 
 		** For the C tables, must roll up to the bene-level to get counts of benes with each service and setting.
 		   First in inner query, create indicator for each setting type to then take max of;

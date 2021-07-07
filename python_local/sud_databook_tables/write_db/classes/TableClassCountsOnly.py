@@ -55,4 +55,7 @@ class TableClassCountsOnly(TableClass):
 
         df = pd.concat([df, get_national_values(df = df, calc_cols = self.count_cols, op='sum', state_name='Total number of states').reset_index(drop=True)], ignore_index=True)
 
+        if len(self.dq_states_excl) > 0:
+            df = self.fill_dq_unusable(df = df)
+
         return df.reset_index(drop=True)
