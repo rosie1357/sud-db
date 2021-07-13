@@ -60,8 +60,6 @@ proc sort data = PI_&year.;
 by submtg_state_Cd rptg_dt;
 run;
 
-
-
 /**MDCD Enrollment**/
 proc transpose data=PI_&year 
                out=PI_mdcd_&year.(drop=_NAME_ _LABEL_) prefix=mdcd_;

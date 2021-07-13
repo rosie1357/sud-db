@@ -31,8 +31,8 @@ execute(
 		         %do m=1 %to 12 %by 1; 
                  %if %sysfunc(length(&m.)) = 1 %then %let m=%sysfunc(putn(&m.,z2)); 
                 ,case when chip_flag_&m.=0 and 
-                           (rstrctd_bnfts_flag_&m. =1 or 
-						    rstrctd_bnfts_flag_&m.=2)
+                           (rstrctd_bnfts_flag_&m. = 1 or 
+						    rstrctd_bnfts_flag_&m. = 2)
                       then 1 else 0 end as mdcd_bene_&m.
 				 %end;
            from  &dbname..&prefix.de_autib

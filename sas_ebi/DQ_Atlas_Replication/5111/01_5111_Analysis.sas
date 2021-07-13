@@ -12,93 +12,93 @@
 
 %macro volume;
 
-/*	%let claimtypes=ip lt ot rx;*/
-/**/
-/*	%do type=1 %to 4;*/
-/*		%let cltype=%scan(&claimtypes.,&type.);*/
-/**/
-/*			** Pull headers, keep needed vars and drop headers not wanted;*/
-/*			%droptable(&cltype.h_vol_0);*/
-/**/
-/*			execute (*/
-/*				create table if not exists &dbname..&prefix.&cltype.h_vol_0 as*/
-/**/
-/*				select submtg_state_cd,*/
-/*				       &cltype._link_key,*/
-/*					   xovr_ind,*/
-/*					   clm_type_cd,*/
-/*					   adjstmt_ind*/
-/**/
-/*				from &dbname..&prefix.&cltype.h_autib*/
-/**/
-/*				where clm_type_cd in ('1','A','3','C') and*/
-/*				      msis_ident_num is not null and*/
-/*					  substring(msis_ident_num,1,1) != '&'*/
-/**/
-/*			) by tmsis_passthrough;*/
-/**/
-/*			** Read in lines;*/
-/**/
-/*			%droptable(&cltype.l_vol)*/
-/**/
-/*			execute (*/
-/*				create table if not exists &dbname..&prefix.&cltype.l_vol as*/
-/**/
-/*				select submtg_state_cd,*/
-/*					   &cltype._link_key,*/
-/*					   cll_stus_cd*/
-/**/
-/*				from &dbname..&prefix.&cltype.l_autib*/
-/**/
-/*				where denied_clm_line_flag=0*/
-/**/
-/*			) by tmsis_passthrough;*/
-/**/
-/**/
-/*			%droptable(&cltype._vol);*/
-/**/
-/*			execute (*/
-/*				create table if not exists &dbname..&prefix.&cltype._vol as*/
-/**/
-/*				select submtg_state_cd*/
-/*				       ,&cltype._link_key*/
-/*					   ,sum(line) as cnt_lines*/
-/**/
-/*				from (*/
-/**/
-/*					select a.**/
-/*					       ,case when b.submtg_state_cd is not null*/
-/*						         then 1 else 0*/
-/*								 end as line*/
-/**/
-/*					from &dbname..&prefix.&cltype.h_vol_0 a*/
-/*					     left join*/
-/*						 &dbname..&prefix.&cltype.l_vol b*/
-/**/
-/*					on a.submtg_state_cd = b.submtg_state_cd and*/
-/*					   a.&cltype._link_key = b.&cltype._link_key ) c*/
-/**/
-/*				group by submtg_state_cd*/
-/*				         ,&cltype._link_key*/
-/**/
-/*				) by tmsis_passthrough;*/
-/**/
-/**/
-/*			%droptable(&cltype._vcounts)*/
-/**/
-/*			execute (*/
-/*				create table if not exists &dbname..&prefix.&cltype._vcounts as*/
-/*				select submtg_state_cd*/
-/*				        ,count(submtg_state_cd) as cnt_headers*/
-/*						,sum(cnt_lines) as cnt_lines*/
-/*						,avg(cnt_lines) as avg_lines*/
-/**/
-/*				from &dbname..&prefix.&cltype._vol*/
-/*				group by submtg_state_cd*/
-/**/
-/*			) by tmsis_passthrough ;*/
-/**/
-/*		%end; ** end claims loop; */
+	%let claimtypes=ip lt ot rx;
+
+	%do type=1 %to 4;
+		%let cltype=%scan(&claimtypes.,&type.);
+
+			** Pull headers, keep needed vars and drop headers not wanted;
+			%droptable(&cltype.h_vol_0);
+
+			execute (
+				create table if not exists &dbname..&prefix.&cltype.h_vol_0 as
+
+				select submtg_state_cd,
+				       &cltype._link_key,
+					   xovr_ind,
+					   clm_type_cd,
+					   adjstmt_ind
+
+				from &dbname..&prefix.&cltype.h_autib
+
+				where clm_type_cd in ('1','A','3','C') and
+				      msis_ident_num is not null and
+					  substring(msis_ident_num,1,1) != '&'
+
+			) by tmsis_passthrough;
+
+			** Read in lines;
+
+			%droptable(&cltype.l_vol)
+
+			execute (
+				create table if not exists &dbname..&prefix.&cltype.l_vol as
+
+				select submtg_state_cd,
+					   &cltype._link_key,
+					   cll_stus_cd
+
+				from &dbname..&prefix.&cltype.l_autib
+
+				where denied_clm_line_flag=0
+
+			) by tmsis_passthrough;
+
+
+			%droptable(&cltype._vol);
+
+			execute (
+				create table if not exists &dbname..&prefix.&cltype._vol as
+
+				select submtg_state_cd
+				       ,&cltype._link_key
+					   ,sum(line) as cnt_lines
+
+				from (
+
+					select a.*
+					       ,case when b.submtg_state_cd is not null
+						         then 1 else 0
+								 end as line
+
+					from &dbname..&prefix.&cltype.h_vol_0 a
+					     left join
+						 &dbname..&prefix.&cltype.l_vol b
+
+					on a.submtg_state_cd = b.submtg_state_cd and
+					   a.&cltype._link_key = b.&cltype._link_key ) c
+
+				group by submtg_state_cd
+				         ,&cltype._link_key
+
+				) by tmsis_passthrough;
+
+
+			%droptable(&cltype._vcounts)
+
+			execute (
+				create table if not exists &dbname..&prefix.&cltype._vcounts as
+				select submtg_state_cd
+				        ,count(submtg_state_cd) as cnt_headers
+						,sum(cnt_lines) as cnt_lines
+						,avg(cnt_lines) as avg_lines
+
+				from &dbname..&prefix.&cltype._vol
+				group by submtg_state_cd
+
+			) by tmsis_passthrough ;
+
+		%end; ** end claims loop; 
 
 		** Now read in DE;
 

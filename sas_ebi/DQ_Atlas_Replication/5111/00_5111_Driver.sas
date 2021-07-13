@@ -24,13 +24,13 @@ Run programs
 
 proc sql;
 	%tmsis_connect;
-/**/
-/*	%volume;*/
-/**/
-/*	%measures(ip, 0);*/
-/*	%measures(lt, 11, suffix=_65);*/
-/*	%measures(ot, 22);*/
-/*	%measures(rx, 33);*/
+
+	%volume;
+
+	%measures(ip, 0);
+	%measures(lt, 11, suffix=_65);
+	%measures(ot, 22);
+	%measures(rx, 33);
 
 	%measures_comb(ip lt ot rx, 0 11 22 33);
 

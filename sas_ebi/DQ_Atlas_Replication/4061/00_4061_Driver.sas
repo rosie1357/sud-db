@@ -22,7 +22,7 @@ Run programs
 ***********************************/
 
 title1 "IB &ibname.";
-/*%include "&progpath./&ibname./01_&briefnum._Lookup_MDCD_CHIP_PI.sas";*/
+%include "&progpath./&ibname./01_&briefnum._Lookup_MDCD_CHIP_PI.sas";
 %include "&progpath./&ibname./02_&briefnum._Measure.sas";
 
 %macro run_brief;
