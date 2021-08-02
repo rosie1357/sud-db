@@ -60,6 +60,10 @@ class TableClassG(TableClass):
 
         self.prepped_df_pre['ci'] = confint.apply(lambda x: f'({"{:0.2f}".format(x[0]*100)}, {"{:0.2f}".format(x[1]*100)})' if type(x) == list else x)
 
+        # add specific hard coding if both numerators == 0: will set CI and pval to NA
+
+        self.prepped_df_pre.loc[(self.prepped_df_pre[stats_cols[0]]==0) & (self.prepped_df_pre[stats_cols[2]]==0), ['pval','ci']]='NA'
+
         return self.prepped_df_pre
 
     def prep_for_tables(self):
