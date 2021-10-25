@@ -8,7 +8,7 @@ There are two parts to this repo: the SAS EBI code to run all the programs to pu
 
 ## 2. Local python code 
 
-The code to run locally in python to create the formal tables for the databook is located in the python_local subfolder [here](./python_local). The tables are populated by reading in the datasets created on EBI, rearranging them and creating stats (e.g. %s, rates), and then writing by cell to the empty table templates. This section details (A) how to run the code and (B) how the code is structured/what to update before running.
+The code to run locally in python to create the formal tables for the databook is located in the python_local subfolder [here](./python_local). The tables are populated by reading in the datasets created on EBI, rearranging them and creating stats (e.g. %s, rates), and then writing by cell to the empty table templates. This section details (A) how to run the code, (B) how the code is structured, and (C) what to update before running.
 
 ### A. How to run
 
@@ -43,7 +43,7 @@ write_db_tables --year 2020
 
 Note that the pipenv commands are only required if you need to update and then enter the virtual env shell.
 
-### B. Code structure/What to update
+### B. Code structure
 
 As noted above, the module to create tables is called via the `main()` function within the module's [cli.py](./python_local/sud_databook_tables/write_db/cli.py) script.
 
@@ -56,3 +56,16 @@ Note there is one main set of tables (the SUD tables), and a companion set of ta
 - The next thing it does is open the table shells (see below for instructions on how to update paths to those if needed). It then calls the main function [gen_tables](./python_local/sud_databook_tables/write_db/gen_tables.py) to do all processing and write to each sheet.
 
 - The final step is saving the populated templates with the year and date information in the file names.
+
+### C. What to update
+
+If there are no structural changes to the tables that require updates to the main code, the only things that may require updates are folder/file paths. They are all defined in [params.py](./python_local/sud_databook_tables/common/utils/params.py).
+
+Each file/folder path should be fairly self-explanatory:
+- Base Restricted and Main N-drive folders
+- Subdirectories for the templates, input SAS datasets, output tables and logs
+- Template and populated file names
+
+The final params are lists of states to set to `DQ` if they are flagged for data quality issues (current year and prior year separately). The researchers will tell you which states should be flagged. Set to empty lists if none are flagged.
+
+If there ARE structural changes to any of the tables, it is likely the [config.yaml](./python_local/sud_databook_tables/write_db/config/config.yaml) will need to be updated to reflect changes to the specific table(s), as long as the change is functionality that's already incorporated into the module. If the functionality is brand new, further code will likely need to be added to specific functions/methods to reflect this. 
