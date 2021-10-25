@@ -15,6 +15,7 @@ pyyaml = "*"
 setuptools = "*"
 db-tables = {editable = true, path = "."}
 tabulate = "*"
+scipy = "*"
 
 [requires]
 python_version = "3.7"
