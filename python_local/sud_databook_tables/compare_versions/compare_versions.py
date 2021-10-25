@@ -13,14 +13,10 @@ from common.utils.general_funcs import generate_logger, print_to_log
 # assign old and new table paths
 
 DIR_OLD = lambda year: DIR_MAIN(year) / 'Output'
-DIR_NEW = lambda year: OUTDIR(year)
+DIR_NEW = lambda year: DIR_MAIN(year) / 'Output'
 
-TABLES = { 'SUD': {'OLD' : lambda year: f"SUD DB Tables ({year}) - 2021-06-15.xlsx",
-                   'NEW' : lambda year, run_date: f"SUD DB Tables ({year}) - {run_date}.xlsx"},
-
-            'OUD':  {'OLD' : lambda year: f"SUD DB Tables (OUD) ({year}) - 2021-06-15.xlsx",
-                     'NEW' : lambda year, run_date: f"SUD DB Tables (OUD) ({year}) - {run_date}.xlsx"}
-        }
+TABLE_OLD = 'SUD DB Tables (2020) - 2021-07-02.xlsx'
+TABLE_NEW = 'SUD DB Tables (2020) - 2021-07-30.xlsx'
 
 # function to return name of Excel file given excel wb object
 
@@ -122,33 +118,28 @@ def main(args=None):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--year', required=True)
-    parser.add_argument('--run_date', required=True, type=date.fromisoformat)
 
     # extract arguments from parser
     
     args = parser.parse_args()
 
-    year, run_date = args.year, args.run_date
+    year = args.year
 
     # generate log
 
     log = generate_logger(logdir=LOGDIR(year), logname = f"compare_db_versions_{DATE_NOW}.log")
 
-    # run comparisons for both SUD and OUD
-    
-    for type in ['SUD','OUD']:
+    # define old and new workbooks
 
-       # define old and new workbooks
+    workbook_old = pd.ExcelFile(DIR_OLD(year) / TABLE_OLD)
+    workbook_new = pd.ExcelFile(DIR_NEW(year) / TABLE_NEW)
 
-        workbook_old = pd.ExcelFile(DIR_OLD(year) / TABLES[type]['OLD'](year))
-        workbook_new = pd.ExcelFile(DIR_NEW(year) / TABLES[type]['NEW'](year, run_date))
+    # generate series with sheet names 
 
-        # generate series with sheet names 
+    sheets_df = pd.Series(workbook_old.sheet_names)
 
-        sheets_df = pd.Series(workbook_old.sheet_names)
+    # run comp_tables on each sheet
 
-        # run comp_tables on each sheet
-
-        log.info(f"Comparison of {type}  tables: {get_file_name(workbook_old)} vs {get_file_name(workbook_new)}")
-                
-        sheets_df.apply(comp_tables, log=log, base_excel_obj = workbook_old, comp_excel_obj = workbook_new)
+    log.info(f"Comparison of tables: {get_file_name(workbook_old)} vs {get_file_name(workbook_new)}")
+            
+    sheets_df.apply(comp_tables, log=log, base_excel_obj = workbook_old, comp_excel_obj = workbook_new)

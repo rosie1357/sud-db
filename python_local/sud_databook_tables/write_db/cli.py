@@ -36,7 +36,7 @@ def main(args=None):
     # open shells (regular and OP/OUD, comp if requested)
 
     workbook = xl.load_workbook(SPECDIR(YEAR) / SHELL)
-    workbook_oud = xl.load_workbook(SPECDIR(YEAR) / SHELL_OUD)
+    #workbook_oud = xl.load_workbook(SPECDIR(YEAR) / SHELL_OUD)
 
     if PYR_COMP:
         workbook_pyear = xl.load_workbook(SPECDIR(YEAR) / SHELL_PYEAR)
@@ -46,12 +46,12 @@ def main(args=None):
     gen_tables(year = YEAR, workbook = workbook, table_details = table_details, config_sheet_num='sheet_num_sud', table_type='SUD', pyr_comp = PYR_COMP, 
                g_table_details=g_table_details, workbook_pyear=workbook_pyear)
 
-    gen_tables(year = YEAR, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD', pyr_comp = False)
+    #gen_tables(year = YEAR, workbook = workbook_oud, table_details = table_details, config_sheet_num='sheet_num_op', table_type='OUD', pyr_comp = False)
 
     # save tables
 
     workbook.save(OUTDIR(YEAR) / OUTFILE(YEAR))
-    workbook_oud.save(OUTDIR(YEAR) / OUTFILE_OUD(YEAR))
+    #workbook_oud.save(OUTDIR(YEAR) / OUTFILE_OUD(YEAR))
 
     if PYR_COMP:
         workbook_pyear.save(OUTDIR(YEAR) / OUTFILE_PYEAR(YEAR))
