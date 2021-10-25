@@ -4,9 +4,29 @@ There are two parts to this repo: the SAS EBI code to run all the programs to pu
 
 ## 1. SAS EBI code
 
-.. will add
+The code to run the databook on SAS EBI is copied to this repo [here](./sas_ebi). It exists on SAS EBI at `/sasdata/users/&sysuserid/tmsisshare/prod/Task_4_and_5_TAF_analyses/`. There is one subfolder per year. Note that it does not have to remain like this, since we can keep records of different versions of the code in Git now, but the setup was made prior to the use of Git, so we wanted to keep years fully separate. You can choose to change this!
 
-## 2. Local python code 
+This section details (A) how to run the code, (B) how the code is structured,  (C) what to update before running, and (D) additional DQ code to run.
+
+### A. How to run
+
+To submit the full set of programs to run the databook, batch submit [00_sud_batch.sas](./sas_ebi/00_sud_batch.sas). Set the macro parameter `%year` to the specific years to run. The programs run very quickly in Redshift and shouldn't take more than 1-2 hours.
+
+All datasets to be downloaded to then create the tables with the local python code will be saved in the libname `sasout` (assigned in the batch program).
+
+### B. Code structure
+
+As noted above, all programs are run via batch submitting the batch program listed above. The first three programs (01-03) in the series identify the SUD population via three different methods, program 04 creates our final analytic population, and programs 05-09 generate various stats for the population related to their claims usage.
+
+### C. What to update
+
+There are code sets that the researcher/analyst will update each year. These code sets must be uploaded to the folder assigned to `%indata`. As long as they are in the same format as the prior year's code sets, no changes will be needed to the code to process them (aside from the file name if needed).
+
+### D. Additional DQ code to run
+
+There is a completely separate set of code [here](./sas_ebi/DQ_Atlas_Replication) that runs specific DQ Atlas metrics to determine which states have data quality issues and should be excluded from this year's databook. Preeti Gill wrote these and ran them for 2020, so reach out to her (or ask the team) to run for future years.
+
+## 2. Local python code
 
 The code to run locally in python to create the formal tables for the databook is located in the python_local subfolder [here](./python_local). The tables are populated by reading in the datasets created on EBI, rearranging them and creating stats (e.g. %s, rates), and then writing by cell to the empty table templates. This section details (A) how to run the code, (B) how the code is structured, and (C) what to update before running.
 
